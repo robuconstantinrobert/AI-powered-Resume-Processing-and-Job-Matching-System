@@ -3,3 +3,4 @@ transformers
 sentence-transformers
 accelerate
 bitsandbytes
+scikit-learn
