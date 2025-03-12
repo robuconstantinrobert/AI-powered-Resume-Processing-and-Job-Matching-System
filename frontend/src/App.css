@@ -1,95 +1,167 @@
 /* src/App.css */
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
+  background-color: #f4f4f4;
+  color: #333;
 }
 
 .navbar {
   display: flex;
   justify-content: space-between;
-  padding: 1rem;
+  align-items: center;
+  padding: 1.2rem 2rem;
   background-color: #333;
   color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .navbar .logo {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
+  font-weight: bold;
 }
 
 .navbar ul {
   list-style: none;
   display: flex;
+  margin: 0;
 }
 
 .navbar ul li {
-  margin: 0 1rem;
+  margin: 0 1.5rem;
 }
 
 .navbar ul li a {
   color: white;
   text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.navbar ul li a:hover {
+  color: #4caf50;
 }
 
 .hero-section {
   background: url('https://yourimageurl.com/hero-image.jpg') no-repeat center center/cover;
   color: white;
-  padding: 100px 0;
+  padding: 150px 0;
   text-align: center;
+  background-position: center;
+  background-size: cover;
+  position: relative;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .hero-content {
-  max-width: 600px;
+  position: relative;
+  max-width: 700px;
   margin: 0 auto;
+  color: white;
+  z-index: 1;
 }
 
 .hero-content h1 {
-  font-size: 3rem;
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+  font-weight: bold;
 }
 
 .hero-content p {
   font-size: 1.5rem;
+  line-height: 1.6;
+  margin-bottom: 40px;
 }
 
-.btn {
+.hero-content .btn {
   background-color: #4caf50;
   color: white;
   padding: 15px 30px;
   text-decoration: none;
   font-size: 1.2rem;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.hero-content .btn:hover {
+  background-color: #45a049;
 }
 
 .features {
   display: flex;
-  justify-content: space-around;
-  padding: 50px 0;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 80px 20px;
+  background-color: #f4f4f4;
 }
 
 .feature-item {
   width: 30%;
   text-align: center;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  border-radius: 8px;
+  transition: box-shadow 0.3s ease;
+}
+
+.feature-item:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 .upload-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 50px;
+  padding: 60px;
+  background-color: #ffffff;
+}
+
+.upload-container h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
 }
 
 input[type="file"] {
   margin: 20px 0;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+}
+
+input[type="file"]:hover {
+  border-color: #4caf50;
 }
 
 button {
   background-color: #4caf50;
-  padding: 10px 20px;
+  padding: 12px 25px;
   color: white;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
 }
 
 button:hover {
   background-color: #45a049;
+}
+
+button:disabled {
+  background-color: #b0b0b0;
+  cursor: not-allowed;
 }

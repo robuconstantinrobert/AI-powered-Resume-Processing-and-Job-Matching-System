@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import HeroSection from "./components/HeroSection";
 import Features from "./components/Features";
@@ -11,10 +11,10 @@ function App() {
   return (
     <Router>
       <Navbar />
-      <Switch>
-        <Route path="/" exact component={HomePage} />
-        <Route path="/upload" component={UploadPage} />
-      </Switch>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/upload" element={<UploadPage />} />
+      </Routes>
     </Router>
   );
 }
