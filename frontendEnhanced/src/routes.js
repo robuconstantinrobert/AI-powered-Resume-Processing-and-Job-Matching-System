@@ -26,8 +26,8 @@ import Icons from "views/examples/Icons.js";
 var routes = [
   {
     path: "/index",
-    name: "Dashboard",
-    icon: "ni ni-tv-2 text-primary",
+    name: "Job Search",
+    icon: "ni ni-briefcase-24 text-primary", 
     component: <Index />,
     layout: "/admin",
   },
@@ -47,15 +47,15 @@ var routes = [
   },
   {
     path: "/user-profile",
-    name: "User Profile",
+    name: "Profile",
     icon: "ni ni-single-02 text-yellow",
     component: <Profile />,
     layout: "/admin",
   },
   {
     path: "/tables",
-    name: "Tables",
-    icon: "ni ni-bullet-list-67 text-red",
+    name: "Documents",
+    icon: "ni ni-archive-2 text-red",
     component: <Tables />,
     layout: "/admin",
   },
