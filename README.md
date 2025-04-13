@@ -2,7 +2,7 @@
 
 First time setup backend:
 1) Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-2) python3 -m venv env
+2) python3 -m venv env (using python 3.10)
 3) Then use env\Scripts\activate to activate the virtual environment
 
 First time setup frontend:
