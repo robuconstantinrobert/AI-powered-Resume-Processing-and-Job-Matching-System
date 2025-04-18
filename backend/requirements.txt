@@ -8,3 +8,9 @@ pandas
 selenium
 webdriver_manager
 bs4
+fitz
+spacy
+PyMuPDF
+openai
+huggingface_hub[hf_xet]
+argparse
