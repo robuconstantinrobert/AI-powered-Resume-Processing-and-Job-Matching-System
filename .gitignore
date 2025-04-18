@@ -9,3 +9,7 @@
 /backend/TinyLlama-1.1B-Chat-v1.0
 /backend/gpt-neo-1.3B
 /backend/.cache
+/backend/occupations_en.csv
+/backend/skills_en.csv
+/backend/occupationSkillRelations_en.csv
+/backend/Ruxandra_Alexandreanu_CV.pdf

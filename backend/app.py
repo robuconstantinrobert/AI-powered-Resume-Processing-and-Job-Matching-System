@@ -14,6 +14,8 @@ from transformers import (AutoTokenizer, AutoModelForCausalLM,
                           BitsAndBytesConfig, logging as hf_logging)
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+import psycopg2, psycopg2.extras
+
 
 # silence HF warnings
 hf_logging.set_verbosity_error()
@@ -64,14 +66,36 @@ def clean_text(inp: str) -> str:
     return txt
 
 # ──────────────────────────────  keyword entities  ────────────────────────────
-JOB_KW  = {"developer","engineer","scientist","programmer","specialist",
-           "architect","analyst","manager","technician","lead"}
-TOOL_KW = {"python","java","c++","javascript","react","nodejs","spring",
-           "linux","docker","kubernetes","aws","azure","git","mysql",
-           "sql","vscode","gitlab","c#","php","html","css"}
-def extract_entities(text: str) -> dict:
-    return {"job_titles": sorted(k for k in JOB_KW  if k in text),
-            "tools":      sorted(k for k in TOOL_KW if k in text)}
+def extract_entities(text: str, skill_set) -> dict:
+    tokens = set(text.split())
+    skills = sorted(k for k in skill_set if k in text)
+    return {"skills": skills}
+
+def get_pg_conn(args):
+    return psycopg2.connect(
+        dbname=args.db, user=args.user, password=args.password,
+        host=args.host, port=args.port
+    )
+
+def load_occupation_vectors(cur):
+    cur.execute("SELECT concepturi, preferredlabel, description "
+                "FROM occupation")
+    occ_rows = cur.fetchall()   # ~3 000 rows
+    texts  = [f"{r[1]} {r[2] or ''}" for r in occ_rows]
+    ids    = [r[0] for r in occ_rows]
+
+    vecs = embed(texts)   # cached MiniLM vectors
+    return ids, texts, vecs
+
+def skills_for_occs(cur, occ_uris):
+    sql = """
+    SELECT DISTINCT lower(s.preferredlabel)
+    FROM occupation_skill_rel r
+    JOIN skill s ON s.concepturi = r.skilluri
+    WHERE r.occupationuri = ANY(%s)
+    """
+    cur.execute(sql, (occ_uris,))
+    return {row[0] for row in cur.fetchall()}
 
 # ───────────────────────────────  embed with cache  ───────────────────────────
 def _sha1(s: str) -> str: return hashlib.sha1(s.encode()).hexdigest()
@@ -150,62 +174,110 @@ def load_llm_hf(local_dir: str):
 
 
 # ───────────────────────────  JSON extract via LLM  ───────────────────────────
-def llm_json_extract(llm, tok, text: str, max_new=128):
-    prompt = ("You are an HR assistant.\n"
-              "Return STRICT JSON with keys job_titles, skills, suggested_roles.\n"
-              "### RESUME\n" + text + "\n### JSON:\n")
-    ids = tok(prompt, return_tensors="pt").to(llm.device)
-    out = llm.generate(**ids, max_new_tokens=max_new,
-                       temperature=0.2, do_sample=False)
-    resp = tok.decode(out[0], skip_special_tokens=True)
-    try:
-        return json.loads(resp.split("### JSON:")[-1].strip())
-    except json.JSONDecodeError:
+# def llm_json_extract(llm, tok, text: str, max_new=128):
+#     prompt = ("You are an HR assistant.\n"
+#               "Return STRICT JSON with keys job_titles, skills, suggested_roles.\n"
+#               "### RESUME\n" + text + "\n### JSON:\n")
+#     ids = tok(prompt, return_tensors="pt").to(llm.device)
+#     out = llm.generate(**ids, max_new_tokens=max_new,
+#                        temperature=0.2, do_sample=False)
+#     resp = tok.decode(out[0], skip_special_tokens=True)
+#     try:
+#         return json.loads(resp.split("### JSON:")[-1].strip())
+#     except json.JSONDecodeError:
+#         return {}
+def llm_json_extract(llm, tok, text: str, max_new=400):
+    prompt = (
+        "You are an HR assistant.\n"
+        "Return **ONLY** valid JSON, no markdown, no explanations.\n"
+        "The JSON object must have keys:\n"
+        "  • job_titles (max‑3)\n"
+        "  • skills (max‑10)\n"
+        "  • suggested_roles (exact‑3)\n"
+        "Resume:\n"
+        + text +
+        "\n\nJSON:\n"
+    )
+    inputs = tok(prompt, return_tensors="pt").to(llm.device)
+    out = llm.generate(
+        **inputs,
+        max_new_tokens=max_new,
+        do_sample=False,
+        temperature=0.0,
+        eos_token_id=tok.eos_token_id,
+    )
+    raw = tok.decode(out[0], skip_special_tokens=True)
+    # now just grab the JSON part:
+    start = raw.find("{")
+    end   = raw.rfind("}")
+    if start == -1 or end == -1:
+        print("[warn] no JSON found – raw output:\n", raw)
         return {}
+    return json.loads(raw[start : end+1])
+
 
 # ───────────────────────────────────  main  ───────────────────────────────────
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pdf", required=True, help="Path to résumé PDF")
-    ap.add_argument("--model", choices=list(LOCAL_MODELS))
-    ap.add_argument("--gguf", help="Path to .gguf 4‑bit model (overrides --model)")
-    ap.add_argument("--jobs", nargs="+", default=[
-        "Software Engineer with expertise in Python, JavaScript, and machine learning.",
-        "Data Scientist specializing in AI and data analysis.",
-        "Web Developer with experience in React, Node.js, and database management.",
-        "Android Developer with proficiency in Java and Android Studio.",
-        "Cloud Engineer with experience in AWS, Docker, Kubernetes, and Python."
-    ])
+    ap.add_argument("--model", choices=list(LOCAL_MODELS),
+                    default="tinyllama")
+    ap.add_argument("--gguf", help="Path to .gguf 4‑bit model")
+    # --- PostgreSQL creds ---
+    ap.add_argument("--db",   default="esco_jobs")
+    ap.add_argument("--user", default="postgres")
+    ap.add_argument("--password", default=os.getenv("PGPASSWORD",""))
+    ap.add_argument("--host", default="localhost")
+    ap.add_argument("--port", type=int, default=5432)
+    ap.add_argument("--top", type=int, default=3,
+                    help="how many best‑matching occupations to show")
     args = ap.parse_args()
 
-    # ---- cleaning --------------------------------------------------
-    cv_clean  = clean_text(args.pdf)
-    job_clean = [clean_text(j) for j in args.jobs]
+    # 1. Clean résumé text -----------------------------------------
+    cv_clean = clean_text(args.pdf)
+    cv_vec   = embed([cv_clean])[0]
 
-    # ---- entities --------------------------------------------------
-    kw_entities = extract_entities(cv_clean)
+    # 2. Pull occupations + vectors --------------------------------
+    pg = get_pg_conn(args)
+    cur = pg.cursor()
+    occ_ids, occ_texts, occ_vecs = load_occupation_vectors(cur)
 
-    # ---- embeddings ------------------------------------------------
-    resume_vec = embed([cv_clean])[0]
-    job_vecs   = embed(job_clean)
-    sims = cosine_similarity([resume_vec], job_vecs)[0]
+    # 3. Cosine similarity résumé ↔ occupations --------------------
+    sims = cosine_similarity([cv_vec], occ_vecs)[0]
+    top_idx = sims.argsort()[-args.top:][::-1]
+    top_occ_ids  = [occ_ids[i]  for i in top_idx]
+    top_occ_text = [occ_texts[i] for i in top_idx]
+    top_sims     = [sims[i] for i in top_idx]
 
-    # ---- LLM load --------------------------------------------------
-    if args.gguf:
-        tok, llm = load_llm_gguf(args.gguf)
-    else:
-        tok, llm = load_llm_hf(LOCAL_MODELS[args.model])
+    # 4. Get skills linked to these occupations --------------------
+    skill_set = skills_for_occs(cur, top_occ_ids)
 
-    llm_info = llm_json_extract(llm, tok, cv_clean)
+    # 5. Keyword extraction using live skill_set -------------------
+    kw_entities = extract_entities(cv_clean, skill_set)
 
-    # ---- output ----------------------------------------------------
-    print("\n== Keyword entities ==")
-    print(json.dumps(kw_entities, indent=2))
+    # 6. LLM load --------------------------------------------------
+    tok, llm = (load_llm_gguf(args.gguf) if args.gguf
+                else load_llm_hf(LOCAL_MODELS[args.model]))
+
+    #llm_info = llm_json_extract(llm, tok, cv_clean)
+    def tail(text, n=1200):
+        return text[-n:] if len(text) > n else text
+
+    llm_info = llm_json_extract(llm, tok, tail(cv_clean))
+
+
+
+    # 7. Output ----------------------------------------------------
+    print("\n== Best‑matching occupations ==")
+    for uri, txt, sc in zip(top_occ_ids, top_occ_text, top_sims):
+        print(f"{sc: .4f}  {txt[:80]}  ({uri})")
+
+    print("\n== Skills matched by keyword ==")
+    print(", ".join(sorted(kw_entities["skills"])))
+
     print("\n== LLM extracted info ==")
     print(json.dumps(llm_info, indent=2))
-    print("\n== Cosine similarity ==")
-    for i, (desc, sc) in enumerate(zip(args.jobs, sims), 1):
-        print(f"{i}. {desc[:65]:65s} → {sc:.4f}")
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
