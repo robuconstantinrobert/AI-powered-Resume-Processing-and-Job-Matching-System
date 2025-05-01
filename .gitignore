@@ -16,3 +16,5 @@
 /backend/all-mpnet-base-v2
 /backend/all-MiniLM-L6-v2
 /backend/gtr-t5-base
+/backend/Qwen2.5-1.5B-Instruct
+/backend/stablelm-zephyr-3b

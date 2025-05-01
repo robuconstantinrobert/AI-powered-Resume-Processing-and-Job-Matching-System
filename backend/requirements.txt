@@ -16,3 +16,4 @@ huggingface_hub[hf_xet]
 argparse
 psycopg2-binary
 pymupdf>=1.23
+peft
