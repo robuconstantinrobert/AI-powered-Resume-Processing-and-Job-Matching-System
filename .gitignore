@@ -18,3 +18,4 @@
 /backend/gtr-t5-base
 /backend/Qwen2.5-1.5B-Instruct
 /backend/stablelm-zephyr-3b
+/backend/__pycache__
