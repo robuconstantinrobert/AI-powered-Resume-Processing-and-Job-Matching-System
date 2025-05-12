@@ -1,10 +1,14 @@
 import json
 from utils import clean_text, embed, load_llm_hf, load_llm_gguf, build_prompt, llm_json_extract
 from sentence_transformers import SentenceTransformer
-from utils import LOCAL_EMB, LOCAL_CHAT
+from utils import LOCAL_EMB, LOCAL_CHAT, DECODE
 import numpy as np
-from utils import pg_conn, fetch_occupations, fetch_skills, embed_texts, _sha1, CACHE_DIR, prompt_for, extract_json
+from utils import pg_conn, fetch_occupations, fetch_skills, embed_texts, _sha1, CACHE_DIR, prompt_for, extract_json, load_llm, extract_json_fixed
 import psycopg2
+
+from mongo import get_documents_collection
+from bson.objectid import ObjectId
+from datetime import datetime
 
 
 EMB_MODEL = None
@@ -21,7 +25,7 @@ def process_cv_service(file, emb_key, model_key, gguf_path):
 
     # Curăță textul din PDF
     resume_text = clean_text(file)
-    _ = embed([resume_text], emb_key)[0]  # doar cache
+    cv_vec = embed([resume_text], emb_key)[0]  # doar cache
 
     # Încarcă modelul LLM (din Hugging Face sau gguf)
     tok, llm = (load_llm_gguf(gguf_path) if gguf_path else load_llm_hf(model_path))
@@ -33,6 +37,13 @@ def process_cv_service(file, emb_key, model_key, gguf_path):
     result = llm_json_extract(llm, tok, prompt, {
         'max_new_tokens': 512, 'do_sample': True, 'temperature': 0.7
     })
+
+    save_processed_document(
+        utilizator_id="000000000000000000000000",
+        raw_text=resume_text,
+        vector=cv_vec,
+        extracted_data=result
+    )
 
     return result
 
@@ -68,12 +79,38 @@ def process_cv_with_esco_service(file, emb_key, model_key, top_n):
     top_skill_lbl = [skill_labels[i] for i in top_skill_idx]
 
     # Încarcă model LLM
-    tok, llm = load_llm_hf(model_path)
+    tok, llm = load_llm(LOCAL_CHAT[model_key])
 
     # Construiește prompt + extrage JSON
     prompt = prompt_for(model_key, resume_text, top_occ_txt, top_skill_lbl)
-    result = llm_json_extract(llm, tok, prompt, {'max_new_tokens': 512, 'do_sample': True, 'temperature': 0.7})
+    result = extract_json_fixed(llm,tok,prompt,DECODE[model_key])
+
+    save_processed_document(
+        utilizator_id="000000000000000000000000",  # sau unul real
+        raw_text=resume_text,
+        vector=cv_vec,
+        extracted_data=result
+    )
 
     cur.close()
     conn.close()
     return result
+
+
+def save_processed_document(utilizator_id, raw_text, vector, extracted_data):
+    collection = get_documents_collection()
+
+    doc = {
+        "utilizator_id": ObjectId("000000000000000000000000"),  # presupunem că îl ai
+        "continut_text": raw_text,
+        "continut_vector": vector.tolist(),  # numpy array → list
+        "data_upload": datetime.utcnow(),
+        "date_extrase": {
+            "competente": extracted_data.get("skills", []),
+            "job_titles": extracted_data.get("job_titles", []),
+            "suggested_roles": extracted_data.get("suggested_roles", [])
+        }
+    }
+
+    result = collection.insert_one(doc)
+    return str(result.inserted_id)

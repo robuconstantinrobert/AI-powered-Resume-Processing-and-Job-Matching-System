@@ -19,6 +19,10 @@ LOCAL_EMB = {
     "gtr":    "./gtr-t5-base",
 }
 
+DECODE=dict(tinyllama=dict(max_new_tokens=512,do_sample=True,temperature=.7),
+            zephyr    =dict(max_new_tokens=512,do_sample=True,temperature=.7),
+            qwen      =dict(max_new_tokens=512,do_sample=True,temperature=.7))
+
 QUANT_CFG = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_use_double_quant=True,
@@ -224,3 +228,50 @@ def extract_json(llm,tok,prompt,dec):
         try: return json.loads(txt[s:e+1])
         except: pass
     print("[warn] bad JSON\n",txt); return {}
+
+def load_llm(local_dir):
+    tok=AutoTokenizer.from_pretrained(local_dir,trust_remote_code=True)
+    if torch.cuda.is_available():
+        try:
+            mdl=AutoModelForCausalLM.from_pretrained(
+                 local_dir,device_map="auto",
+                 quantization_config=QUANT_CFG,trust_remote_code=True)
+            return tok,mdl
+        except Exception: pass
+    mdl=AutoModelForCausalLM.from_pretrained(
+         local_dir,device_map={"": "cpu"},
+         torch_dtype=torch.float32,low_cpu_mem_usage=True,
+         trust_remote_code=True)
+    return tok,mdl
+
+def extract_json_fixed(llm, tok, prompt, decoding_kwargs):
+    import re
+
+    inputs = tok(prompt, return_tensors="pt").to(llm.device)
+    decoding_kwargs.setdefault('max_new_tokens', 1024)
+
+    out = llm.generate(**inputs, eos_token_id=tok.eos_token_id, **decoding_kwargs)
+    raw = tok.decode(out[0], skip_special_tokens=True)
+
+    print("[DEBUG] Raw LLM output:\n", raw)
+    print("[DEBUG] Output length:", len(raw))
+
+    # Caută toate blocurile JSON posibile
+    json_matches = re.findall(r"\{[\s\S]*?\}", raw)
+
+    for candidate in json_matches:
+        try:
+            parsed = json.loads(candidate)
+
+            # Normalizare chei pentru Mongo
+            return {
+                "job_titles": parsed.get("job_titles", parsed.get("jobTitles", [])),
+                "skills": parsed.get("skills", []),
+                "suggested_roles": parsed.get("suggested_roles", parsed.get("suggestedRoles", []))
+            }
+
+        except json.JSONDecodeError:
+            continue
+
+    return {"error": "Failed to extract JSON"}
+
