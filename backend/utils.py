@@ -30,27 +30,56 @@ QUANT_CFG = BitsAndBytesConfig(
 
 torch.set_num_threads(min(4, os.cpu_count() or 4))
 
+# def clean_text(file):
+#     pdf = fitz.open(stream=file.read(), filetype='pdf')
+#     raw = "\n".join(page.get_text() for page in pdf)
+#     txt = re.sub(r"\b\d{7,}\b|\S+@\S+|https?://\S+|www\.\S+", " ", raw)
+#     keep = []
+#     SECTION_HEADINGS = {
+#         "contact","about me","projects","work experience","education",
+#         "certifications","languages","skills","qualities"
+#     }
+#     def _is_heading(line): 
+#         t = line.strip().lower()
+#         return t.isupper() and any(t.startswith(h) for h in SECTION_HEADINGS)
+#     for ln in txt.splitlines():
+#         ln = ln.strip()
+#         if not ln or _is_heading(ln) or (ln.isupper() and len(ln.split()) <= 2):
+#             continue
+#         keep.append(ln)
+#     txt = " ".join(keep)
+#     txt = re.sub(r"[^A-Za-z0-9.,:/\\+& -]", " ", txt)
+#     txt = re.sub(r"\s{2,}", " ", txt).lower().strip()
+#     return txt
 def clean_text(file):
-    pdf = fitz.open(stream=file.read(), filetype='pdf')
-    raw = "\n".join(page.get_text() for page in pdf)
+    if isinstance(file, str) and not Path(file).is_file():
+        raw = file
+    else:
+        pdf = fitz.open(stream=file.read(), filetype='pdf')
+        raw = "\n".join(page.get_text() for page in pdf)
+
     txt = re.sub(r"\b\d{7,}\b|\S+@\S+|https?://\S+|www\.\S+", " ", raw)
     keep = []
     SECTION_HEADINGS = {
-        "contact","about me","projects","work experience","education",
-        "certifications","languages","skills","qualities"
+        "contact", "about me", "projects", "work experience", "education",
+        "certifications", "languages", "skills", "qualities"
     }
-    def _is_heading(line): 
+
+    def _is_heading(line):
         t = line.strip().lower()
         return t.isupper() and any(t.startswith(h) for h in SECTION_HEADINGS)
+
     for ln in txt.splitlines():
         ln = ln.strip()
         if not ln or _is_heading(ln) or (ln.isupper() and len(ln.split()) <= 2):
             continue
         keep.append(ln)
+
     txt = " ".join(keep)
     txt = re.sub(r"[^A-Za-z0-9.,:/\\+& -]", " ", txt)
     txt = re.sub(r"\s{2,}", " ", txt).lower().strip()
     return txt
+
 
 def _sha1(s): return hashlib.sha1(s.encode()).hexdigest()
 

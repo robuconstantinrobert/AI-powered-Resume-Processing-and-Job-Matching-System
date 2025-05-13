@@ -15,6 +15,7 @@ def fetch_embedding_pg(sha1_hash, emb_model):
 def save_embedding_pg(sha1_hash, emb_model, embedding):
     conn = psycopg2.connect(dbname='vector_database', user='postgres', password='password', host='localhost', port=5432)
     cur = conn.cursor()
+    cur.execute("DELETE FROM embeddings_cache WHERE sha1_hash = %s", (sha1_hash,))
     cur.execute("INSERT INTO embeddings_cache (sha1_hash, emb_model, embedding) VALUES (%s, %s, %s)", (sha1_hash, emb_model, embedding.tolist()))
     conn.commit()
     cur.close()

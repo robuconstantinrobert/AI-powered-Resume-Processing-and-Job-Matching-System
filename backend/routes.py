@@ -1,5 +1,10 @@
 from flask import Blueprint, request, jsonify
 from services import process_cv_service, process_cv_with_esco_service
+from mongo import get_documents_collection
+from bson.objectid import ObjectId
+from sentence_transformers import SentenceTransformer
+
+from utils import LOCAL_EMB, LOCAL_CHAT, load_llm_hf, build_prompt, llm_json_extract
 
 api_bp = Blueprint('api', __name__)
 
@@ -66,26 +71,22 @@ def update_document(document_id):
 
     raw_text = document["continut_text"]
 
-    # Vectorizare nouă
+    # Vector nou și completare LLM
+    from services import process_cv_service  # dacă nu e deja importată
+    result = process_cv_service(file=raw_text, emb_key=emb_key, model_key=model_key, gguf_path=None)
+
+    # Vector nou
     emb_model = SentenceTransformer(LOCAL_EMB[emb_key], device="cpu", trust_remote_code=True)
     vector = emb_model.encode(raw_text, normalize_embeddings=True)
 
-    # Chat completion nou
-    model_path = LOCAL_CHAT[model_key]
-    tok, llm = load_llm_hf(model_path)
-    prompt = build_prompt(model_key, raw_text, tok)
-    result = llm_json_extract(llm, tok, prompt, {'max_new_tokens': 512, 'do_sample': True, 'temperature': 0.7})
-
-    # Update în Mongo
     update = {
         "continut_vector": vector.tolist(),
         "date_extrase": {
-            "competente": result.get("competente", []),
+            "competente": result.get("skills", []),
             "job_titles": result.get("job_titles", []),
-            "experienta": result.get("experienta", [])
+            "experienta": result.get("experienta", [])  # poate lipsi, dar o includem
         }
     }
+
     collection.update_one({"_id": ObjectId(document_id)}, {"$set": update})
     return jsonify({"status": "updated", "new_data": update})
-
-
