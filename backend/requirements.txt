@@ -19,3 +19,6 @@ pymupdf>=1.23
 peft
 flask
 pymongo
+selenium
+requests
+lxml
