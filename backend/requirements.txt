@@ -22,3 +22,5 @@ pymongo
 selenium
 requests
 lxml
+PyJWT
+flask-cors

@@ -6,13 +6,17 @@ from sentence_transformers import SentenceTransformer
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import os, json, time, random, urllib, datetime
-from utils import LOCAL_EMB, LOCAL_CHAT, load_llm_hf, build_prompt, llm_json_extract, load_linkedin_cookies, FixedJobSearch
+from utils import LOCAL_EMB, LOCAL_CHAT, load_llm_hf, build_prompt, llm_json_extract, load_linkedin_cookies, FixedJobSearch, JWT
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from linkedin_scraper import JobSearch, actions
 from linkedin_scraper.job_search import JobSearch as OriginalJobSearch
 from linkedin_scraper.jobs import Job
+import hashlib, jwt
+from datetime import datetime, timedelta
+
+SECRET_KEY = "cheia_mea_secreta" #Move this to env file asap
 
 api_bp = Blueprint('api', __name__)
 
@@ -236,3 +240,35 @@ def get_user(user_id):
     user["_id"] = str(user["_id"])
     user.pop("parola_hash", None)  # nu trimitem parola în clar
     return jsonify(user), 200
+
+
+@api_bp.route('/users/login', methods=['POST'])
+def login_user():
+    data = request.get_json()
+    email = data.get("email")
+    parola = data.get("parola")
+
+    if not all([email, parola]):
+        return jsonify({"error": "Email și parolă necesare."}), 400
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "Utilizator inexistent."}), 404
+
+    parola_hash = hashlib.sha256(parola.encode()).hexdigest()
+    if user.get("parola_hash") != parola_hash:
+        return jsonify({"error": "Parolă greșită."}), 401
+
+    token = jwt.encode({
+        "user_id": str(user["_id"]),
+        "exp": datetime.utcnow() + timedelta(days=1)
+    }, SECRET_KEY, algorithm="HS256")
+
+    print("DEBUG TOKEN:", jwt.decode(token, SECRET_KEY, algorithms=["HS256"]))
+
+
+    return jsonify({
+        "message": "Autentificare reușită",
+        "token": token,
+        "user_id": str(user["_id"])
+    }), 200

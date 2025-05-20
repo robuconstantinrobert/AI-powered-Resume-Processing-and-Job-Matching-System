@@ -16,6 +16,10 @@ import os
 import urllib
 from linkedin_scraper.job_search import JobSearch as OriginalJobSearch
 from linkedin_scraper.jobs import Job
+import jwt
+from functools import wraps
+
+SECRET_KEY = "cheia_mea_secreta"
 
 CACHE_DIR = Path(".cache"); CACHE_DIR.mkdir(exist_ok=True)
 
@@ -528,3 +532,27 @@ class FixedJobSearch(OriginalJobSearch):
                 continue
                 
         return job_results
+
+
+def JWT(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if "Authorization" in request.headers:
+            auth_header = request.headers["Authorization"]
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+
+        if not token:
+            return jsonify({"error": "Token lipsă"}), 401
+
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            request.user_id = data["user_id"]
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token expirat"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "Token invalid"}), 401
+
+        return f(*args, **kwargs)
+    return decorated

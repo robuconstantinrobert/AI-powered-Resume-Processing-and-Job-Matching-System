@@ -77,6 +77,16 @@ const AdminNavbar = () => {
                   <span className="nav-link-inner--text">Profile</span>
                 </NavLink>
               </NavItem>
+              <NavItem>
+                <NavLink
+                  className="nav-link-icon"
+                  to="/auth/login"
+                  tag={Link}
+                >
+                  <i className="ni ni-single-02" />
+                  <span className="nav-link-inner--text">Logout</span>
+                </NavLink>
+              </NavItem>
             </Nav>
           </UncontrolledCollapse>
         </Container>
