@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
+import hashlib
 
 
 def save_result_mongo(data):
@@ -59,3 +60,31 @@ def clean_mongo_doc(doc):
         key: str(value) if isinstance(value, ObjectId) else value
         for key, value in doc.items()
     }
+
+def get_users_collection():
+    client = MongoClient("mongodb://localhost:27017")
+    db = client["cv_database"]
+    return db["users"]
+
+def hash_password(parola):
+    return hashlib.sha256(parola.encode()).hexdigest()
+
+def create_user(nume, email, parola, preferinte=None):
+    collection = get_users_collection()
+    user = {
+        "nume": nume,
+        "email": email,
+        "parola_hash": hash_password(parola),
+        "preferinte": preferinte or {},
+        "created_at": datetime.utcnow(),
+        "profile_status": "activ"
+    }
+    return collection.insert_one(user).inserted_id
+
+def get_user_by_email(email):
+    collection = get_users_collection()
+    return collection.find_one({"email": email})
+
+def get_user_by_id(user_id):
+    collection = get_users_collection()
+    return collection.find_one({"_id": ObjectId(user_id)})

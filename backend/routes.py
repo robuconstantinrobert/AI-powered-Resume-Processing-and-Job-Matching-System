@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services import process_cv_service, process_cv_with_esco_service
-from mongo import get_documents_collection, save_multiple_job_results, clean_mongo_doc
+from mongo import get_documents_collection, save_multiple_job_results, clean_mongo_doc, create_user, get_user_by_email, get_user_by_id
 from bson.objectid import ObjectId
 from sentence_transformers import SentenceTransformer
 from selenium import webdriver
@@ -209,3 +209,30 @@ def linkedin_search_jobs():
 
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+
+@api_bp.route("/users/register", methods=["POST"])
+def register_user():
+    data = request.get_json()
+    nume = data.get("nume")
+    email = data.get("email")
+    parola = data.get("parola")
+    preferinte = data.get("preferinte", {})
+
+    if not all([nume, email, parola]):
+        return jsonify({"error": "Toate câmpurile (nume, email, parola) sunt necesare."}), 400
+
+    if get_user_by_email(email):
+        return jsonify({"error": "Email deja înregistrat."}), 409
+
+    user_id = create_user(nume, email, parola, preferinte)
+    return jsonify({"message": "Utilizator creat cu succes.", "user_id": str(user_id)}), 201
+
+@api_bp.route("/users/<user_id>", methods=["GET"])
+def get_user(user_id):
+    user = get_user_by_id(user_id)
+    if not user:
+        return jsonify({"error": "Utilizatorul nu a fost găsit."}), 404
+    user["_id"] = str(user["_id"])
+    user.pop("parola_hash", None)  # nu trimitem parola în clar
+    return jsonify(user), 200
