@@ -5,50 +5,44 @@ import Register from "views/examples/Register.js";
 import Login from "views/examples/Login.js";
 import Tables from "views/examples/Tables.js";
 import Icons from "views/examples/Icons.js";
-import { Navigate } from "react-router-dom";
-import { isAuthenticated } from "layouts/Auth";
 import Logout from "views/examples/Logout"
+import ProtectedRoute from "components/Navbars/ProtectedRoutes";
 
-
-// 🔐 Wrapper inline pentru protejarea componentelor
-const protectedRoute = (Component) => {
-  return isAuthenticated() ? Component : <Navigate to="/auth/login" replace />;
-};
 
 var routes = [
   {
     path: "/index",
     name: "Job Search",
     icon: "ni ni-briefcase-24 text-primary",
-    component: protectedRoute(<Index />), // 🔒 protejat
+    component: <ProtectedRoute element={<Index />} />,
     layout: "/admin",
   },
   {
     path: "/icons",
     name: "Icons",
     icon: "ni ni-planet text-blue",
-    component: protectedRoute(<Icons />), // 🔒
+    component: <ProtectedRoute element={<Icons/>}/>,
     layout: "/admin",
   },
   {
     path: "/maps",
     name: "Maps",
     icon: "ni ni-pin-3 text-orange",
-    component: protectedRoute(<Maps />), // 🔒
+    component: <ProtectedRoute element={<Maps/>}/>,
     layout: "/admin",
   },
   {
     path: "/user-profile",
     name: "Profile",
     icon: "ni ni-single-02 text-yellow",
-    component: protectedRoute(<Profile />), // 🔒
+    component: <ProtectedRoute element={<Profile/>}/>,
     layout: "/admin",
   },
   {
     path: "/tables",
     name: "Documents",
     icon: "ni ni-archive-2 text-red",
-    component: protectedRoute(<Tables />), // 🔒
+    component: <ProtectedRoute element={<Tables/>}/>,
     layout: "/admin",
   },
   {
