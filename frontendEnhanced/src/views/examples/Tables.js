@@ -20,6 +20,11 @@ import Header from "components/Headers/Header.js";
 const ResumeJobMatching = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [useEsco, setUseEsco] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [selectedEmb, setSelectedEmb] = useState("minilm");
+  const [selectedModel, setSelectedModel] = useState("tinyllama");
+
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -42,12 +47,40 @@ const ResumeJobMatching = () => {
     }
   };
 
-  const handleUpload = () => {
-    if (selectedFile) {
-      console.log("Uploading file:", selectedFile.name);
-      // Implement upload logic here
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("emb", selectedEmb);
+    formData.append("model", selectedModel);
+    if (useEsco) {
+      formData.append("top", 3);
+    }
+
+
+    const endpoint = useEsco
+      ? "http://localhost:5000/api/process_cv_with_esco"
+      : "http://localhost:5000/api/process_cv";
+
+    try {
+      setUploadStatus("Uploading...");
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      console.log("Upload result:", data);
+      setUploadStatus("Upload successful!");
+    } catch (err) {
+      console.error(err);
+      setUploadStatus("Upload failed. Please try again.");
     }
   };
+
 
   return (
     <>
@@ -60,7 +93,42 @@ const ResumeJobMatching = () => {
             <Card className="shadow">
               <CardHeader className="border-0 d-flex justify-content-between align-items-center">
                 <h3 className="mb-0">Resume Manager</h3>
-                <Button color="primary" size="sm">Process Documents</Button>
+                <div className="mt-3">
+                  <label className="d-flex align-items-center justify-content-center">
+                    <input
+                      type="checkbox"
+                      checked={useEsco}
+                      onChange={() => setUseEsco(!useEsco)}
+                      style={{ marginRight: "8px" }}
+                    />
+                    Enhanced processing
+                  </label>
+                </div>
+                <div className="mt-2">
+                  <label className="text-muted">Embedding:</label>
+                  <select
+                    className="form-control"
+                    value={selectedEmb}
+                    onChange={(e) => setSelectedEmb(e.target.value)}
+                  >
+                    <option value="minilm">MiniLM</option>
+                    <option value="mpnet">MPNet</option>
+                    <option value="gtr">GTR T5</option>
+                  </select>
+                </div>
+
+                <div className="mt-2">
+                  <label className="text-muted">Chat Completion:</label>
+                  <select
+                    className="form-control"
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                  >
+                    <option value="tinyllama">TinyLlama</option>
+                    <option value="zephyr">Zephyr</option>
+                    <option value="qwen">Qwen</option>
+                  </select>
+                </div>
               </CardHeader>
               <Table className="align-items-center table-flush" responsive>
                 <thead className="thead-light">
@@ -132,6 +200,11 @@ const ResumeJobMatching = () => {
             <Card className="shadow">
               <CardHeader className="bg-white border-0 text-center">
                 <h4 className="mb-0">Upload Resume</h4>
+                {uploadStatus && (
+                  <p className={`mt-2 ${uploadStatus.includes("failed") ? "text-danger" : "text-success"}`}>
+                    {uploadStatus}
+                  </p>
+                )}
               </CardHeader>
               <CardBody className="text-center">
                 <div 
