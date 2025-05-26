@@ -13,7 +13,7 @@ from datetime import datetime
 
 EMB_MODEL = None
 
-def process_cv_service(file, emb_key, model_key, gguf_path):
+def process_cv_service(file, emb_key, model_key, gguf_path, user_id, file_name):
     global EMB_MODEL
 
     # Obține calea locală din mapări
@@ -39,7 +39,8 @@ def process_cv_service(file, emb_key, model_key, gguf_path):
     })
 
     save_processed_document(
-        utilizator_id="000000000000000000000000",
+        user_id = ObjectId(user_id),
+        file_name = file_name,
         raw_text=resume_text,
         vector=cv_vec,
         extracted_data=result
@@ -48,7 +49,7 @@ def process_cv_service(file, emb_key, model_key, gguf_path):
     return result
 
 
-def process_cv_with_esco_service(file, emb_key, model_key, top_n):
+def process_cv_with_esco_service(file, emb_key, model_key, top_n, user_id, file_name):
 
     # Încarcă model embedding
     emb_model = SentenceTransformer(LOCAL_EMB[emb_key], device='cpu', trust_remote_code=True)
@@ -86,7 +87,8 @@ def process_cv_with_esco_service(file, emb_key, model_key, top_n):
     result = extract_json_fixed(llm,tok,prompt,DECODE[model_key])
 
     save_processed_document(
-        utilizator_id="000000000000000000000000",  # sau unul real
+        user_id = ObjectId(user_id),
+        file_name = file_name,
         raw_text=resume_text,
         vector=cv_vec,
         extracted_data=result
@@ -97,13 +99,14 @@ def process_cv_with_esco_service(file, emb_key, model_key, top_n):
     return result
 
 
-def save_processed_document(utilizator_id, raw_text, vector, extracted_data):
+def save_processed_document(user_id, raw_text, vector, extracted_data, file_name):
     collection = get_documents_collection()
 
     doc = {
-        "utilizator_id": ObjectId("000000000000000000000000"),  # presupunem că îl ai
+        "utilizator_id": ObjectId(user_id),
+        "file_name": file_name,
         "continut_text": raw_text,
-        "continut_vector": vector.tolist(),  # numpy array → list
+        "continut_vector": vector.tolist(),
         "data_upload": datetime.utcnow(),
         "date_extrase": {
             "competente": extracted_data.get("skills", []),
@@ -114,3 +117,8 @@ def save_processed_document(utilizator_id, raw_text, vector, extracted_data):
 
     result = collection.insert_one(doc)
     return str(result.inserted_id)
+
+
+def get_documents_by_user(user_id):
+    collection = get_documents_collection()
+    return list(collection.find({"utilizator_id": ObjectId(user_id)}))

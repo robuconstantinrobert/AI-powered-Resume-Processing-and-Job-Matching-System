@@ -25,12 +25,14 @@ def process_cv():
     file = request.files.get('file')
     emb = request.form.get('emb', 'minilm')
     model = request.form.get('model', 'tinyllama')
-    gguf = request.form.get('gguf')  # optional
+    gguf = request.form.get('gguf')
+    user_id = request.form.get('user_id')
+    file_name = request.form.get('file_name', 'document.pdf')
 
     if not file:
         return jsonify({'error': 'No file uploaded'}), 400
 
-    result = process_cv_service(file, emb, model, gguf)
+    result = process_cv_service(file, emb, model, gguf, user_id, file_name)
     return jsonify(result)
 
 
@@ -39,26 +41,33 @@ def process_cv_with_esco():
     file = request.files.get('file')
     emb = request.form.get('emb', 'minilm')
     model = request.form.get('model', 'tinyllama')
-    top = int(request.form.get('top', 3))
+    top = request.form.get('top', 3)
+    user_id = request.form.get('user_id')
+    file_name = request.form.get('file_name', 'document.pdf')
 
     if not file:
         return jsonify({'error': 'No file uploaded'}), 400
 
-    result = process_cv_with_esco_service(file, emb, model, top)
+    result = process_cv_with_esco_service(file, emb, model, top, user_id, file_name)
     return jsonify(result)
 
 
+@api_bp.route('/documents/<user_id>', methods=['GET'])
+def get_documents(user_id):
+    try:
+        collection = get_documents_collection()
+        documents = collection.find({"utilizator_id": ObjectId(user_id)})
 
-@api_bp.route('/documents/<utilizator_id>', methods=['GET'])
-def get_documents(utilizator_id):
-    collection = get_documents_collection()
-    docs = collection.find({"utilizator_id": ObjectId(utilizator_id)})
-    results = []
-    for doc in docs:
-        doc['_id'] = str(doc['_id'])
-        doc['utilizator_id'] = str(doc['utilizator_id'])
-        results.append(doc)
-    return jsonify(results)
+        result = []
+        for doc in documents:
+            doc['_id'] = str(doc['_id'])
+            doc['utilizator_id'] = str(doc['utilizator_id'])
+            result.append(doc)
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @api_bp.route('/documents/<document_id>', methods=['DELETE'])

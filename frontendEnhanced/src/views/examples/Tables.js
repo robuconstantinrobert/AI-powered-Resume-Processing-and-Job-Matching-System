@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Badge,
   Card,
@@ -24,7 +24,11 @@ const ResumeJobMatching = () => {
   const [uploadStatus, setUploadStatus] = useState("");
   const [selectedEmb, setSelectedEmb] = useState("minilm");
   const [selectedModel, setSelectedModel] = useState("tinyllama");
+  const [documents, setDocuments] = useState([]);
 
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -47,6 +51,21 @@ const ResumeJobMatching = () => {
     }
   };
 
+  const fetchDocuments = async () => {
+    const userId = localStorage.getItem("user_id");
+    if (!userId) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/documents/${userId}`);
+      if (!response.ok) throw new Error("Failed to fetch documents");
+      const data = await response.json();
+      setDocuments(data);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+    }
+  };
+
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -54,6 +73,10 @@ const ResumeJobMatching = () => {
     formData.append("file", selectedFile);
     formData.append("emb", selectedEmb);
     formData.append("model", selectedModel);
+    formData.append("user_id", localStorage.getItem("user_id"));
+    formData.append("file_name", selectedFile.name);
+
+
     if (useEsco) {
       formData.append("top", 3);
     }
@@ -79,6 +102,9 @@ const ResumeJobMatching = () => {
       console.error(err);
       setUploadStatus("Upload failed. Please try again.");
     }
+
+    fetchDocuments();
+
   };
 
 
@@ -141,54 +167,54 @@ const ResumeJobMatching = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <th scope="row">
-                      <Media className="align-items-center">
-                        <Media>
-                          <span className="mb-0 text-sm">Resume_Jhon_Doe.pdf</span>
-                        </Media>
-                      </Media>
-                    </th>
-                    <td>
-                      <Badge color="success" className="badge-dot mr-4">
-                        <i className="bg-success" /> 85% Match
-                      </Badge>
-                    </td>
-                    <td>
-                      <ul className="mb-0">
-                        <li>Software Engineer</li>
-                        <li>Backend Developer</li>
-                      </ul>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <span className="mr-2">Completed</span>
-                        <Progress max="100" value="100" barClassName="bg-success" style={{ width: "120px" }} />
-                      </div>
-                    </td>
-                    <td className="text-left">
-                      <Button color="danger" size="sm" className="mr-2">
-                        <i className="fas fa-trash" />
-                      </Button>
-                      <Button color="info" size="sm" className="mr-2">
-                        <i className="fas fa-search" />
-                      </Button>
-                      <Button color="warning" size="sm" className="mr-2">
-                        <i className="fas fa-edit" />
-                      </Button>
-                      <UncontrolledDropdown>
-                        <DropdownToggle className="btn-icon-only text-light" size="sm" color="">
-                          <i className="fas fa-ellipsis-v" />
-                        </DropdownToggle>
-                        <DropdownMenu className="dropdown-menu-arrow" right>
-                          <DropdownItem href="#pablo">View Resume</DropdownItem>
-                          <DropdownItem href="#pablo">Edit Details</DropdownItem>
-                          <DropdownItem href="#pablo">Remove Document</DropdownItem>
-                        </DropdownMenu>
-                      </UncontrolledDropdown>
-                    </td>
-                  </tr>
+                  {documents.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center text-muted">No documents found</td>
+                    </tr>
+                  ) : (
+                    documents.map((doc) => (
+                      <tr key={doc._id}>
+                        <th scope="row">
+                          <Media className="align-items-center">
+                            <Media>
+                              <span className="mb-0 text-sm">{doc.file_name || "Unnamed Document"}</span>
+                            </Media>
+                          </Media>
+                        </th>
+                        <td>
+                          <Badge color="info" className="badge-dot mr-4">
+                            <i className="bg-info" /> {doc?.skills_score || "N/A"}
+                          </Badge>
+                        </td>
+                        <td>
+                          <ul className="mb-0">
+                            {(doc?.date_extrase?.job_titles || []).map((title, idx) => (
+                              <li key={idx}>{title}</li>
+                            ))}
+                          </ul>
+                        </td>
+                        <td>
+                          <div className="d-flex align-items-center">
+                            <span className="mr-2">Processed</span>
+                            <Progress max="100" value="100" barClassName="bg-success" style={{ width: "120px" }} />
+                          </div>
+                        </td>
+                        <td className="text-left">
+                          <Button color="danger" size="sm" className="mr-2">
+                            <i className="fas fa-trash" />
+                          </Button>
+                          <Button color="info" size="sm" className="mr-2">
+                            <i className="fas fa-search" />
+                          </Button>
+                          <Button color="warning" size="sm" className="mr-2">
+                            <i className="fas fa-edit" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))  
+                  )}
                 </tbody>
+
               </Table>
             </Card>
           </div>
