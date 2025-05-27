@@ -136,7 +136,7 @@ def linkedin_login():
 
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument("--headless=new")
+    options.add_argument("--headless=new")
     # options.add_argument("--headless")  # poți activa pentru rulare fără UI
 
     driver = webdriver.Chrome(options=options)

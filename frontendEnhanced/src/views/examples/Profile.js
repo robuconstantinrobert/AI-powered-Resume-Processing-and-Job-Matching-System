@@ -1,29 +1,9 @@
-/*!
-
-=========================================================
-* Argon Dashboard React - v1.2.4
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/argon-dashboard-react
-* Copyright 2024 Creative Tim (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/argon-dashboard-react/blob/master/LICENSE.md)
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
-
-// reactstrap components
 import {
   Button,
   Card,
   CardHeader,
   CardBody,
   FormGroup,
-  Form,
   Input,
   Container,
   Row,
@@ -31,8 +11,52 @@ import {
 } from "reactstrap";
 // core components
 import UserHeader from "components/Headers/UserHeader.js";
+import { useState } from "react";
 
 const Profile = () => {
+  const [linkedinEmail, setLinkedinEmail] = useState("");
+  const [linkedinPassword, setLinkedinPassword] = useState("");
+  const [linkedinStatus, setLinkedinStatus] = useState("");
+  const [isLinkedInLinked, setIsLinkedInLinked] = useState(false);
+
+  const handleLinkedInSave = async () => {
+    const user_id = localStorage.getItem("user_id");
+
+    if (!linkedinEmail || !linkedinPassword) {
+      setLinkedinStatus("Please enter both email and password.");
+      return;
+    }
+
+    try {
+      setLinkedinStatus("Linking account...");
+
+      const res = await fetch("http://localhost:5000/api/linkedin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: linkedinEmail,
+          password: linkedinPassword,
+          user_id: user_id || linkedinEmail.split("@")[0],
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to link LinkedIn account.");
+      }
+
+      setLinkedinStatus("LinkedIn account linked successfully!");
+      setIsLinkedInLinked(true);
+      localStorage.setItem("linkedin_linked", "true"); // store for later use
+    } catch (err) {
+      console.error(err);
+      setLinkedinStatus("Failed to link account: " + err.message);
+      setIsLinkedInLinked(false);
+      localStorage.setItem("linkedin_linked", "false");
+    }
+  };
+
   return (
     <>
       <UserHeader />
@@ -145,178 +169,39 @@ const Profile = () => {
                 </Row>
               </CardHeader>
               <CardBody>
-                <Form>
-                  <h6 className="heading-small text-muted mb-4">
-                    User information
-                  </h6>
-                  <div className="pl-lg-4">
-                    <Row>
-                      <Col lg="6">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-username"
-                          >
-                            Username
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            defaultValue="lucky.jesse"
-                            id="input-username"
-                            placeholder="Username"
-                            type="text"
-                          />
-                        </FormGroup>
-                      </Col>
-                      <Col lg="6">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-email"
-                          >
-                            Email address
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            id="input-email"
-                            placeholder="jesse@example.com"
-                            type="email"
-                          />
-                        </FormGroup>
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col lg="6">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-first-name"
-                          >
-                            First name
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            defaultValue="Lucky"
-                            id="input-first-name"
-                            placeholder="First name"
-                            type="text"
-                          />
-                        </FormGroup>
-                      </Col>
-                      <Col lg="6">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-last-name"
-                          >
-                            Last name
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            defaultValue="Jesse"
-                            id="input-last-name"
-                            placeholder="Last name"
-                            type="text"
-                          />
-                        </FormGroup>
-                      </Col>
-                    </Row>
-                  </div>
-                  <hr className="my-4" />
-                  {/* Address */}
-                  <h6 className="heading-small text-muted mb-4">
-                    Contact information
-                  </h6>
-                  <div className="pl-lg-4">
-                    <Row>
-                      <Col md="12">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-address"
-                          >
-                            Address
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            defaultValue="Bld Mihail Kogalniceanu, nr. 8 Bl 1, Sc 1, Ap 09"
-                            id="input-address"
-                            placeholder="Home Address"
-                            type="text"
-                          />
-                        </FormGroup>
-                      </Col>
-                    </Row>
-                    <Row>
-                      <Col lg="4">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-city"
-                          >
-                            City
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            defaultValue="New York"
-                            id="input-city"
-                            placeholder="City"
-                            type="text"
-                          />
-                        </FormGroup>
-                      </Col>
-                      <Col lg="4">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-country"
-                          >
-                            Country
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            defaultValue="United States"
-                            id="input-country"
-                            placeholder="Country"
-                            type="text"
-                          />
-                        </FormGroup>
-                      </Col>
-                      <Col lg="4">
-                        <FormGroup>
-                          <label
-                            className="form-control-label"
-                            htmlFor="input-country"
-                          >
-                            Postal code
-                          </label>
-                          <Input
-                            className="form-control-alternative"
-                            id="input-postal-code"
-                            placeholder="Postal code"
-                            type="number"
-                          />
-                        </FormGroup>
-                      </Col>
-                    </Row>
-                  </div>
-                  <hr className="my-4" />
-                  {/* Description */}
-                  <h6 className="heading-small text-muted mb-4">About me</h6>
+                <hr className="my-4" />
+                  <h6 className="heading-small text-muted mb-4">LinkedIn Integration</h6>
                   <div className="pl-lg-4">
                     <FormGroup>
-                      <label>About Me</label>
+                      <label>LinkedIn Email</label>
                       <Input
                         className="form-control-alternative"
-                        placeholder="A few words about you ..."
-                        rows="4"
-                        defaultValue="A beautiful Dashboard for Bootstrap 4. It is Free and
-                        Open Source."
-                        type="textarea"
+                        placeholder="LinkedIn Email"
+                        type="email"
+                        value={linkedinEmail}
+                        onChange={(e) => setLinkedinEmail(e.target.value)}
                       />
                     </FormGroup>
+                    <FormGroup>
+                      <label>LinkedIn Password</label>
+                      <Input
+                        className="form-control-alternative"
+                        placeholder="LinkedIn Password"
+                        type="password"
+                        value={linkedinPassword}
+                        onChange={(e) => setLinkedinPassword(e.target.value)}
+                      />
+                    </FormGroup>
+                    <Button color="success" onClick={handleLinkedInSave}>
+                      Save
+                    </Button>
+                    {linkedinStatus && (
+                      <p className={`mt-2 ${linkedinStatus.includes("success") ? "text-success" : "text-danger"}`}>
+                        {linkedinStatus}
+                      </p>
+                    )}
                   </div>
-                </Form>
+
               </CardBody>
             </Card>
           </Col>
