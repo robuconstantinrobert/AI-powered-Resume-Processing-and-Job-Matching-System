@@ -111,7 +111,8 @@ def save_processed_document(user_id, raw_text, vector, extracted_data, file_name
         "date_extrase": {
             "competente": extracted_data.get("skills", []),
             "job_titles": extracted_data.get("job_titles", []),
-            "suggested_roles": extracted_data.get("suggested_roles", [])
+            "suggested_roles": extracted_data.get("suggested_roles", []),
+            "work_experience": extracted_data.get("seniority_level", [])
         }
     }
 

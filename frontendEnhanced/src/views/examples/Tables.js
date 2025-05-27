@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { 
-  Badge,
   Card,
   CardHeader,
-  DropdownMenu,
-  DropdownItem,
-  UncontrolledDropdown,
-  DropdownToggle,
   Media,
-  Progress,
   Table,
   Container,
   Row,
@@ -16,6 +10,7 @@ import {
   CardBody
 } from "reactstrap";
 import Header from "components/Headers/Header.js";
+import EditModal from "./EditModal.js";
 
 const ResumeJobMatching = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -25,6 +20,9 @@ const ResumeJobMatching = () => {
   const [selectedEmb, setSelectedEmb] = useState("minilm");
   const [selectedModel, setSelectedModel] = useState("tinyllama");
   const [documents, setDocuments] = useState([]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [currentDocId, setCurrentDocId] = useState(null);
+
 
   useEffect(() => {
     fetchDocuments();
@@ -107,6 +105,28 @@ const ResumeJobMatching = () => {
 
   };
 
+  const handleDelete = async (documentId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/documents/${documentId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete document");
+
+      // Eliminăm documentul șters din listă fără să refacem fetch complet
+      setDocuments((prevDocs) => prevDocs.filter((doc) => doc._id !== documentId));
+    } catch (err) {
+      console.error("Error deleting document:", err);
+    }
+  };
+
+  const openEditModal = (docId) => {
+    setCurrentDocId(docId);
+    setEditModalOpen(true);
+  };
+
+
+
 
   return (
     <>
@@ -162,6 +182,7 @@ const ResumeJobMatching = () => {
                     <th scope="col">Document</th>
                     <th scope="col">Skills Match</th>
                     <th scope="col">Job Recommendations</th>
+                    <th scope="col">Seniority</th>
                     <th scope="col">Processing Status</th>
                     <th scope="col" />
                   </tr>
@@ -182,9 +203,11 @@ const ResumeJobMatching = () => {
                           </Media>
                         </th>
                         <td>
-                          <Badge color="info" className="badge-dot mr-4">
-                            <i className="bg-info" /> {doc?.skills_score || "N/A"}
-                          </Badge>
+                          <ul className="mb-0">
+                            {(doc?.date_extrase?.competente || []).map((title, idx) => (
+                              <li key={idx}>{title}</li>
+                            ))}
+                          </ul>
                         </td>
                         <td>
                           <ul className="mb-0">
@@ -194,19 +217,35 @@ const ResumeJobMatching = () => {
                           </ul>
                         </td>
                         <td>
+                          <span>{doc?.date_extrase?.work_experience || "N/A"}</span>
+                        </td>
+                        <td>
                           <div className="d-flex align-items-center">
                             <span className="mr-2">Processed</span>
-                            <Progress max="100" value="100" barClassName="bg-success" style={{ width: "120px" }} />
                           </div>
                         </td>
                         <td className="text-left">
-                          <Button color="danger" size="sm" className="mr-2">
+                          <Button
+                            color="danger"
+                            size="sm"
+                            className="mr-2"
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to delete this document?")) {
+                                handleDelete(doc._id);
+                              }
+                            }}
+                          >
                             <i className="fas fa-trash" />
                           </Button>
                           <Button color="info" size="sm" className="mr-2">
                             <i className="fas fa-search" />
                           </Button>
-                          <Button color="warning" size="sm" className="mr-2">
+                          <Button
+                            color="warning"
+                            size="sm"
+                            className="mr-2"
+                            onClick={() => openEditModal(doc._id)}
+                          >
                             <i className="fas fa-edit" />
                           </Button>
                         </td>
@@ -219,6 +258,16 @@ const ResumeJobMatching = () => {
             </Card>
           </div>
         </Row>
+        
+        <EditModal
+          isOpen={editModalOpen}
+          toggle={() => setEditModalOpen(false)}
+          documentId={currentDocId}
+          onUpdate={() => {
+            fetchDocuments();
+            setEditModalOpen(false);
+          }}
+        />
         
         {/* Drag and Drop Upload Zone */}
         <Row className="mt-5 justify-content-center">
@@ -263,5 +312,3 @@ const ResumeJobMatching = () => {
 };
 
 export default ResumeJobMatching;
-
-

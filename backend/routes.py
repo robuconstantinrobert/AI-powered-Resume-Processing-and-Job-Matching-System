@@ -85,6 +85,8 @@ def update_document(document_id):
     data = request.get_json()
     emb_key = data.get("emb", "minilm")
     model_key = data.get("model", "tinyllama")
+    user_id = data.get("utilizator_id")
+    file_name = data.get("file_name")
 
     document = collection.find_one({"_id": ObjectId(document_id)})
     if not document:
@@ -94,7 +96,12 @@ def update_document(document_id):
 
     # Vector nou și completare LLM
     from services import process_cv_service  # dacă nu e deja importată
-    result = process_cv_service(file=raw_text, emb_key=emb_key, model_key=model_key, gguf_path=None)
+    result = process_cv_service(file=raw_text, 
+        emb_key=emb_key, 
+        model_key=model_key, 
+        gguf_path=None,
+        user_id=user_id,
+        file_name=file_name)
 
     # Vector nou
     emb_model = SentenceTransformer(LOCAL_EMB[emb_key], device="cpu", trust_remote_code=True)
@@ -105,7 +112,7 @@ def update_document(document_id):
         "date_extrase": {
             "competente": result.get("skills", []),
             "job_titles": result.get("job_titles", []),
-            "experienta": result.get("experienta", [])  # poate lipsi, dar o includem
+            "suggested_roles": result.get("suggested_roles", [])
         }
     }
 

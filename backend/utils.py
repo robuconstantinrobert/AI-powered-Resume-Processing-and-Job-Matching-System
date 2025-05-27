@@ -153,7 +153,8 @@ def build_prompt(model_key, resume, tok):
             "Required keys & limits:\n"
             "  job_titles        (max 3)\n"
             "  skills            (max 10)\n"
-            "  suggested_roles   (exact 3)\n\n"
+            "  suggested_roles   (exact 3)\n"
+            "  seniority_level   (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\")\n\n"
             "Résumé:\n" + resume + "\n\nJSON:\n"
         )
     elif model_key == "zephyr":
@@ -163,7 +164,8 @@ def build_prompt(model_key, resume, tok):
             "Return ONLY valid JSON with keys:\n"
             "  job_titles (max 3)\n"
             "  skills (max 10)\n"
-            "  suggested_roles (exact 3)\n\n"
+            "  suggested_roles (exact 3)\n"
+            "  seniority_level (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\")\n\n"
             "Résumé:\n" + resume + "<|end|>\n"
             "<|assistant|>"
         )
@@ -171,8 +173,8 @@ def build_prompt(model_key, resume, tok):
         sys = "<|im_start|>system\nYou are an HR assistant.<|im_end|>\n"
         usr = (
             "<|im_start|>user\n"
-            "Extract job_titles (max 3), skills (max 10) and suggested_roles "
-            "(exact 3) from the résumé below and reply with ONLY JSON.\n\n"
+            "Extract job_titles (max 3), skills (max 10), suggested_roles "
+            "(exact 3) and seniority_level (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\") from the résumé below and reply with ONLY JSON.\n\n"
             + resume + "<|im_end|>\n"
         )
         assistant = "<|im_start|>assistant\n"
