@@ -65,7 +65,7 @@ export default function JobRecommendations() {
         
         <Row className="mb-4">
           <Col md="4">
-            <Label for="cvSelect">Choose a résumé / CV</Label>
+            <Label for="cvSelect">Choose Document</Label>
             <Input
               id="cvSelect"
               type="select"
@@ -95,7 +95,7 @@ export default function JobRecommendations() {
                   <th>Job Title</th>
                   <th>Company</th>
                   <th>Location</th>
-                  <th style={{ width: 90 }}>Apply</th>
+                  <th style={{ width: 10 }}>Apply</th>
                 </tr>
               </thead>
               <tbody>
