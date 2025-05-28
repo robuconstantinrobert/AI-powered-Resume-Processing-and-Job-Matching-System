@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { Spinner } from "reactstrap";
 import React, { useState, useEffect } from "react";
 import { 
   Card,
@@ -25,9 +24,7 @@ const ResumeJobMatching = () => {
   const [documents, setDocuments] = useState([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [currentDocId, setCurrentDocId] = useState(null);
-  const [searchResults, setSearchResults] = useState({});
   
-
 
   useEffect(() => {
     fetchDocuments();
@@ -118,7 +115,6 @@ const ResumeJobMatching = () => {
 
       if (!response.ok) throw new Error("Failed to delete document");
 
-      // Eliminăm documentul șters din listă fără să refacem fetch complet
       setDocuments((prevDocs) => prevDocs.filter((doc) => doc._id !== documentId));
     } catch (err) {
       console.error("Error deleting document:", err);
@@ -149,11 +145,6 @@ const ResumeJobMatching = () => {
 
       navigate(`/jobs?docId=${docId}&userId=${userId}`);
 
-      // store under this docId so you can render later
-      setSearchResults(prev => ({
-        ...prev,
-        [docId]: results
-      }));
     } catch (err) {
       console.error("LinkedIn search error:", err);
     }
@@ -165,9 +156,7 @@ const ResumeJobMatching = () => {
   return (
     <>
       <Header />
-      {/* Page content */}
       <Container className="mt--7" fluid>
-        {/* Table */}
         <Row>
           <div className="col">
             <Card className="shadow">
@@ -308,7 +297,6 @@ const ResumeJobMatching = () => {
           }}
         />
         
-        {/* Drag and Drop Upload Zone */}
         <Row className="mt-5 justify-content-center">
           <div className="col-lg-6">
             <Card className="shadow">

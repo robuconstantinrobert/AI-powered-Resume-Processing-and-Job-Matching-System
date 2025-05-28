@@ -16,7 +16,7 @@ from linkedin_scraper.jobs import Job
 import hashlib, jwt
 from datetime import datetime, timedelta
 
-SECRET_KEY = "cheia_mea_secreta" #Move this to env file asap
+SECRET_KEY = "cheia_mea_secreta"
 
 api_bp = Blueprint('api', __name__)
 
@@ -94,8 +94,7 @@ def update_document(document_id):
 
     raw_text = document["continut_text"]
 
-    # Vector nou și completare LLM
-    from services import process_cv_service  # dacă nu e deja importată
+    from services import process_cv_service
     result = process_cv_service(file=raw_text, 
         emb_key=emb_key, 
         model_key=model_key, 
@@ -103,7 +102,6 @@ def update_document(document_id):
         user_id=user_id,
         file_name=file_name)
 
-    # Vector nou
     emb_model = SentenceTransformer(LOCAL_EMB[emb_key], device="cpu", trust_remote_code=True)
     vector = emb_model.encode(raw_text, normalize_embeddings=True)
 
@@ -125,7 +123,7 @@ def linkedin_login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    user_id = data.get('user_id', email.split('@')[0])  # fallback dacă nu se trimite user_id
+    user_id = data.get('user_id', email.split('@')[0])
 
     if not email or not password:
         return jsonify({"error": "Email și parola sunt necesare."}), 400
@@ -184,7 +182,6 @@ def linkedin_search_jobs():
             print("INTRA AICI")
             return jsonify({"error": f"Nu există cookie pentru user_id: {user_id}"}), 404
 
-        # Configurare Chrome
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-gpu")
@@ -217,18 +214,15 @@ def linkedin_search_jobs():
 
         jobs_data = []
         try:
-            # Autentificare cu cookie-uri
             print("Logging in...")
             load_linkedin_cookies(driver, cookie_file=cookie_file)
             time.sleep(random.uniform(3, 5))
 
-            # Inițializare și căutare joburi
             print("Starting search...")
             job_search = FixedJobSearch(driver=driver, close_on_complete=False, scrape=False)
             for role in roles:
                 job_listings = job_search.search(role)
 
-                # Formatul de răspuns
                 for job in job_listings:
                     job_doc = {
                         "title": job.job_title,
@@ -284,7 +278,7 @@ def get_user(user_id):
     if not user:
         return jsonify({"error": "Utilizatorul nu a fost găsit."}), 404
     user["_id"] = str(user["_id"])
-    user.pop("parola_hash", None)  # nu trimitem parola în clar
+    user.pop("parola_hash", None) 
     return jsonify(user), 200
 
 
