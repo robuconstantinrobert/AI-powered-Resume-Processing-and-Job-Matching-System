@@ -18,20 +18,6 @@ var routes = [
     layout: "/admin",
   },
   {
-    path: "/icons",
-    name: "Icons",
-    icon: "ni ni-planet text-blue",
-    component: <ProtectedRoute element={<Icons/>}/>,
-    layout: "/admin",
-  },
-  {
-    path: "/maps",
-    name: "Maps",
-    icon: "ni ni-pin-3 text-orange",
-    component: <ProtectedRoute element={<Maps/>}/>,
-    layout: "/admin",
-  },
-  {
     path: "/user-profile",
     name: "Profile",
     icon: "ni ni-single-02 text-yellow",
