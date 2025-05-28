@@ -1,404 +1,471 @@
-// import { useState } from "react";
-// // node.js library that concatenates classes (strings)
-// import classnames from "classnames";
-// // javascipt plugin for creating charts
-// import Chart from "chart.js";
-// // react plugin used to create charts
-// import { Line, Bar } from "react-chartjs-2";
-// // reactstrap components
-// import {
-//   Button,
-//   Card,
-//   CardHeader,
-//   CardBody,
-//   NavItem,
-//   NavLink,
-//   Nav,
-//   Progress,
-//   Table,
-//   Container,
-//   Row,
-//   Col,
-// } from "reactstrap";
+// // // import { useState, useEffect } from "react";
+// // // import { useLocation, useSearchParams } from "react-router-dom";
+// // // import axios from "axios";
+// // // import {
+// // //   Card,
+// // //   CardHeader,
+// // //   CardBody,
+// // //   Table,
+// // //   Container,
+// // //   Row,
+// // //   Col,
+// // //   Button
+// // // } from "reactstrap";
+// // // import Header from "components/Headers/Header.js";
+// // // import { Spinner } from "reactstrap";
 
-// // core components
-// import {
-//   chartOptions,
-//   parseOptions,
-//   chartExample1,
-//   chartExample2,
-// } from "variables/charts.js";
+// // // function useQuery() {
+// // //   return new URLSearchParams(useLocation().search);
+// // // }
 
+// // // const Index = () => {
+// // //   const [jobs, setJobs]       = useState([]);
+// // //   const [loading, setLoading] = useState(true);
+// // //   const [error, setError]     = useState();
+// // //   const [searchParams] = useSearchParams();
+// // //   const docId   = searchParams.get("docId");
+// // //   const userId  = searchParams.get("userId");
+
+
+// // //     useEffect(() => {
+// // //       if (!docId || !userId) return;
+
+// // //       const fetchRecommendations = async () => {
+// // //         try {
+// // //           console.log("Fetching jobs for", { docId, userId });
+// // //           // use full localhost URL to eliminate proxy mis‐routing
+// // //           const resp = await axios.get(
+// // //             "http://localhost:5000/api/jobs/recommendations",
+// // //             {
+// // //               params: { doc_id: docId, user_id: userId },
+// // //               timeout: 10000,         // give it up to 10s
+// // //             }
+// // //           );
+// // //           console.log("Raw GET response:", resp);
+// // //           console.log("resp.data:", resp.data);
+
+// // //           if (Array.isArray(resp.data)) {
+// // //             setJobs(resp.data);
+// // //           } else if (resp.data.error) {
+// // //             throw new Error(resp.data.error);
+// // //           } else {
+// // //             console.warn("Unexpected shape:", resp.data);
+// // //             setJobs([]);
+// // //           }
+// // //         } catch (err) {
+// // //           console.error("Error in fetchRecommendations:", err);
+// // //           setError(err.message || "Unknown error");
+// // //           setJobs([]);  // stop spinner
+// // //         }
+// // //       };
+
+// // //       fetchRecommendations();
+// // //     }, [docId, userId]);
+
+// // //     if (loading) {
+// // //       return (
+// // //         <>
+// // //           <Header />
+// // //           <Container className="mt--7 text-center">
+// // //             <Spinner style={{ width: "3rem", height: "3rem" }} />
+// // //           </Container>
+// // //         </>
+// // //       );
+// // //     }
+
+// // //   return (
+// // //     <>
+// // //       <Header />
+// // //       <Container className="mt--7" fluid>
+// // //         {error && <p className="text-danger">{error}</p>}
+
+// // //         <Table responsive>
+// // //           <thead>
+// // //             <tr>
+// // //               <th>Job Title</th>
+// // //               <th>Company</th>
+// // //               <th>Location</th>
+// // //               <th>Apply</th>
+// // //             </tr>
+// // //           </thead>
+// // //           <tbody>
+// // //             {jobs.length === 0 ? (
+// // //               <tr>
+// // //                 <td colSpan="4" className="text-center">
+// // //                   No jobs found
+// // //                 </td>
+// // //               </tr>
+// // //             ) : (
+// // //               jobs.map((job, i) => (
+// // //                 <tr key={i}>
+// // //                   <td>{job.title}</td>
+// // //                   <td>{job.company}</td>
+// // //                   <td>{job.location}</td>
+// // //                   <td>
+// // //                     <a
+// // //                       href={job.url}
+// // //                       target="_blank"
+// // //                       rel="noopener noreferrer"
+// // //                       className="btn btn-sm btn-primary"
+// // //                     >
+// // //                       Apply
+// // //                     </a>
+// // //                   </td>
+// // //                 </tr>
+// // //               ))
+// // //             )}
+// // //           </tbody>
+// // //         </Table>
+// // //       </Container>
+// // //     </>
+// // //   );
+// // // };
+
+// // // export default Index;
+
+// // import { useState, useEffect } from "react";
+// // import { useSearchParams } from "react-router-dom";
+// // import axios from "axios";
+// // import { Table, Container, Spinner } from "reactstrap";
+// // import Header from "components/Headers/Header.js";
+
+// // const Index = () => {
+// //   const [jobs, setJobs]       = useState([]);       // NEVER null
+// //   const [loading, setLoading] = useState(true);
+// //   const [error, setError]     = useState(null);
+
+// //   const [searchParams] = useSearchParams();
+// //   const docId  = searchParams.get("doc_Id");
+// //   const userId = searchParams.get("user_Id");
+
+// //   useEffect(() => {
+// //     // If we don't even have the query params, stop loading and bail
+// //     if (!docId || !userId) {
+// //       setLoading(false);
+// //       return;
+// //     }
+
+// //     const fetchJobs = async () => {
+// //       try {
+// //         const resp = await axios.get(
+// //           "http://localhost:5000/api/jobs/recommendations",
+// //           { params: { doc_id: docId, user_id: userId } }
+// //         );
+// //         setJobs(Array.isArray(resp.data) ? resp.data : []);
+// //       } catch (err) {
+// //         console.error("Error fetching jobs:", err);
+// //         setError(err.response?.data?.error || err.message);
+// //       } finally {
+// //         setLoading(false);
+// //       }
+// //     };
+
+// //     fetchJobs();
+// //   }, [docId, userId]);
+
+// //   // 1) Loading state
+// //   if (loading) {
+// //     return (
+// //       <>
+// //         <Header />
+// //         <Container className="mt--7 text-center">
+// //           <Spinner style={{ width: "3rem", height: "3rem" }} />
+// //         </Container>
+// //       </>
+// //     );
+// //   }
+
+// //   // 2) Loaded: safe to render table with jobs always an array
+// //   return (
+// //     <>
+// //       <Header />
+// //       <Container className="mt--7" fluid>
+// //         {error && <p className="text-danger">{error}</p>}
+
+// //         <Table responsive>
+// //           <thead>
+// //             <tr>
+// //               <th>Job Title</th>
+// //               <th>Company</th>
+// //               <th>Location</th>
+// //               <th>Apply</th>
+// //             </tr>
+// //           </thead>
+// //           <tbody>
+// //             {!(jobs?.length) ? (
+// //               <tr>
+// //                 <td colSpan="4" className="text-center">
+// //                   No jobs found
+// //                 </td>
+// //               </tr>
+// //             ) : (
+// //               jobs.map((job, idx) => (
+// //                 <tr key={idx}>
+// //                   <td>{job.title}</td>
+// //                   <td>{job.company}</td>
+// //                   <td>{job.location}</td>
+// //                   <td>
+// //                     <a
+// //                       href={job.url}
+// //                       target="_blank"
+// //                       rel="noopener noreferrer"
+// //                       className="btn btn-sm btn-primary"
+// //                     >
+// //                       Apply
+// //                     </a>
+// //                   </td>
+// //                 </tr>
+// //               ))
+// //             )}
+// //           </tbody>
+// //         </Table>
+// //       </Container>
+// //     </>
+// //   );
+// // };
+
+// // export default Index;
+
+
+// import { useState, useEffect } from "react";
+// import { useSearchParams } from "react-router-dom";
+// import axios from "axios";
+// import { Table, Container, Spinner } from "reactstrap";
 // import Header from "components/Headers/Header.js";
 
-// const Index = (props) => {
-//   const [activeNav, setActiveNav] = useState(1);
-//   const [chartExample1Data, setChartExample1Data] = useState("data1");
+// export default function JobRecommendations() {
+//   const [jobs, setJobs]       = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError]     = useState(null);
 
-//   if (window.Chart) {
-//     parseOptions(Chart, chartOptions());
+//   const [searchParams] = useSearchParams();
+//   const docId  = searchParams.get("doc_id");   // <-- fixed
+//   const userId = searchParams.get("user_id");  // <-- fixed
+
+//   useEffect(() => {
+//     if (!docId || !userId) { setLoading(false); return; }
+
+//     const fetchJobs = async () => {
+//       setLoading(true);
+//       try {
+//         const { data } = await axios.get(
+//           "http://localhost:5000/api/jobs/recommendations?doc_id={doc_id}&user_id={user_id}",
+//           { params: { doc_id: docId, user_id: userId }, timeout: 10000 }
+//         );
+//         setJobs(Array.isArray(data) ? data : []);
+//         setError(null);
+//       } catch (err) {
+//         console.error(err);
+//         setError(err.response?.data?.error || err.message);
+//         setJobs([]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchJobs();
+//   }, [docId, userId]);
+
+//   if (loading) {
+//     return (
+//       <>
+//         <Header />
+//         <Container className="mt--7 text-center">
+//           <Spinner style={{ width: "3rem", height: "3rem" }} />
+//         </Container>
+//       </>
+//     );
 //   }
 
-//   const toggleNavs = (e, index) => {
-//     e.preventDefault();
-//     setActiveNav(index);
-//     setChartExample1Data("data" + index);
-//   };
 //   return (
 //     <>
 //       <Header />
-//       {/* Page content */}
 //       <Container className="mt--7" fluid>
-//         <Row>
-//           <Col className="mb-5 mb-xl-0" xl="8">
-//             <Card className="bg-gradient-default shadow">
-//               <CardHeader className="bg-transparent">
-//                 <Row className="align-items-center">
-//                   <div className="col">
-//                     <h6 className="text-uppercase text-light ls-1 mb-1">
-//                       Overview
-//                     </h6>
-//                     <h2 className="text-white mb-0">Sales value</h2>
-//                   </div>
-//                   <div className="col">
-//                     <Nav className="justify-content-end" pills>
-//                       <NavItem>
-//                         <NavLink
-//                           className={classnames("py-2 px-3", {
-//                             active: activeNav === 1,
-//                           })}
-//                           href="#pablo"
-//                           onClick={(e) => toggleNavs(e, 1)}
-//                         >
-//                           <span className="d-none d-md-block">Month</span>
-//                           <span className="d-md-none">M</span>
-//                         </NavLink>
-//                       </NavItem>
-//                       <NavItem>
-//                         <NavLink
-//                           className={classnames("py-2 px-3", {
-//                             active: activeNav === 2,
-//                           })}
-//                           data-toggle="tab"
-//                           href="#pablo"
-//                           onClick={(e) => toggleNavs(e, 2)}
-//                         >
-//                           <span className="d-none d-md-block">Week</span>
-//                           <span className="d-md-none">W</span>
-//                         </NavLink>
-//                       </NavItem>
-//                     </Nav>
-//                   </div>
-//                 </Row>
-//               </CardHeader>
-//               <CardBody>
-//                 {/* Chart */}
-//                 <div className="chart">
-//                   <Line
-//                     data={chartExample1[chartExample1Data]}
-//                     options={chartExample1.options}
-//                     getDatasetAtEvent={(e) => console.log(e)}
-//                   />
-//                 </div>
-//               </CardBody>
-//             </Card>
-//           </Col>
-//           <Col xl="4">
-//             <Card className="shadow">
-//               <CardHeader className="bg-transparent">
-//                 <Row className="align-items-center">
-//                   <div className="col">
-//                     <h6 className="text-uppercase text-muted ls-1 mb-1">
-//                       Performance
-//                     </h6>
-//                     <h2 className="mb-0">Total orders</h2>
-//                   </div>
-//                 </Row>
-//               </CardHeader>
-//               <CardBody>
-//                 {/* Chart */}
-//                 <div className="chart">
-//                   <Bar
-//                     data={chartExample2.data}
-//                     options={chartExample2.options}
-//                   />
-//                 </div>
-//               </CardBody>
-//             </Card>
-//           </Col>
-//         </Row>
-//         <Row className="mt-5">
-//           <Col className="mb-5 mb-xl-0" xl="8">
-//             <Card className="shadow">
-//               <CardHeader className="border-0">
-//                 <Row className="align-items-center">
-//                   <div className="col">
-//                     <h3 className="mb-0">Page visits</h3>
-//                   </div>
-//                   <div className="col text-right">
-//                     <Button
-//                       color="primary"
-//                       href="#pablo"
-//                       onClick={(e) => e.preventDefault()}
-//                       size="sm"
+//         {error && <p className="text-danger">{error}</p>}
+
+//         <Table responsive hover>
+//           <thead>
+//             <tr>
+//               <th>Job Title</th>
+//               <th>Company</th>
+//               <th>Location</th>
+//               <th style={{ width: 90 }}>Apply</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             {jobs.length === 0 ? (
+//               <tr>
+//                 <td colSpan="4" className="text-center">
+//                   No jobs found
+//                 </td>
+//               </tr>
+//             ) : (
+//               jobs.map(job => (
+//                 <tr key={job._id /* backend made this a string */}>
+//                   <td>{job.title}</td>
+//                   <td>{job.company}</td>
+//                   <td>{job.location}</td>
+//                   <td>
+//                     <a
+//                       href={job.url}
+//                       target="_blank"
+//                       rel="noopener noreferrer"
+//                       className="btn btn-sm btn-primary"
 //                     >
-//                       See all
-//                     </Button>
-//                   </div>
-//                 </Row>
-//               </CardHeader>
-//               <Table className="align-items-center table-flush" responsive>
-//                 <thead className="thead-light">
-//                   <tr>
-//                     <th scope="col">Page name</th>
-//                     <th scope="col">Visitors</th>
-//                     <th scope="col">Unique users</th>
-//                     <th scope="col">Bounce rate</th>
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   <tr>
-//                     <th scope="row">/argon/</th>
-//                     <td>4,569</td>
-//                     <td>340</td>
-//                     <td>
-//                       <i className="fas fa-arrow-up text-success mr-3" /> 46,53%
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">/argon/index.html</th>
-//                     <td>3,985</td>
-//                     <td>319</td>
-//                     <td>
-//                       <i className="fas fa-arrow-down text-warning mr-3" />{" "}
-//                       46,53%
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">/argon/charts.html</th>
-//                     <td>3,513</td>
-//                     <td>294</td>
-//                     <td>
-//                       <i className="fas fa-arrow-down text-warning mr-3" />{" "}
-//                       36,49%
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">/argon/tables.html</th>
-//                     <td>2,050</td>
-//                     <td>147</td>
-//                     <td>
-//                       <i className="fas fa-arrow-up text-success mr-3" /> 50,87%
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">/argon/profile.html</th>
-//                     <td>1,795</td>
-//                     <td>190</td>
-//                     <td>
-//                       <i className="fas fa-arrow-down text-danger mr-3" />{" "}
-//                       46,53%
-//                     </td>
-//                   </tr>
-//                 </tbody>
-//               </Table>
-//             </Card>
-//           </Col>
-//           <Col xl="4">
-//             <Card className="shadow">
-//               <CardHeader className="border-0">
-//                 <Row className="align-items-center">
-//                   <div className="col">
-//                     <h3 className="mb-0">Social traffic</h3>
-//                   </div>
-//                   <div className="col text-right">
-//                     <Button
-//                       color="primary"
-//                       href="#pablo"
-//                       onClick={(e) => e.preventDefault()}
-//                       size="sm"
-//                     >
-//                       See all
-//                     </Button>
-//                   </div>
-//                 </Row>
-//               </CardHeader>
-//               <Table className="align-items-center table-flush" responsive>
-//                 <thead className="thead-light">
-//                   <tr>
-//                     <th scope="col">Referral</th>
-//                     <th scope="col">Visitors</th>
-//                     <th scope="col" />
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   <tr>
-//                     <th scope="row">Facebook</th>
-//                     <td>1,480</td>
-//                     <td>
-//                       <div className="d-flex align-items-center">
-//                         <span className="mr-2">60%</span>
-//                         <div>
-//                           <Progress
-//                             max="100"
-//                             value="60"
-//                             barClassName="bg-gradient-danger"
-//                           />
-//                         </div>
-//                       </div>
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">Facebook</th>
-//                     <td>5,480</td>
-//                     <td>
-//                       <div className="d-flex align-items-center">
-//                         <span className="mr-2">70%</span>
-//                         <div>
-//                           <Progress
-//                             max="100"
-//                             value="70"
-//                             barClassName="bg-gradient-success"
-//                           />
-//                         </div>
-//                       </div>
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">Google</th>
-//                     <td>4,807</td>
-//                     <td>
-//                       <div className="d-flex align-items-center">
-//                         <span className="mr-2">80%</span>
-//                         <div>
-//                           <Progress max="100" value="80" />
-//                         </div>
-//                       </div>
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">Instagram</th>
-//                     <td>3,678</td>
-//                     <td>
-//                       <div className="d-flex align-items-center">
-//                         <span className="mr-2">75%</span>
-//                         <div>
-//                           <Progress
-//                             max="100"
-//                             value="75"
-//                             barClassName="bg-gradient-info"
-//                           />
-//                         </div>
-//                       </div>
-//                     </td>
-//                   </tr>
-//                   <tr>
-//                     <th scope="row">twitter</th>
-//                     <td>2,645</td>
-//                     <td>
-//                       <div className="d-flex align-items-center">
-//                         <span className="mr-2">30%</span>
-//                         <div>
-//                           <Progress
-//                             max="100"
-//                             value="30"
-//                             barClassName="bg-gradient-warning"
-//                           />
-//                         </div>
-//                       </div>
-//                     </td>
-//                   </tr>
-//                 </tbody>
-//               </Table>
-//             </Card>
-//           </Col>
-//         </Row>
+//                       Apply
+//                     </a>
+//                   </td>
+//                 </tr>
+//               ))
+//             )}
+//           </tbody>
+//         </Table>
 //       </Container>
 //     </>
 //   );
-// };
-
-// export default Index;
+// }
 
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
-  Card,
-  CardHeader,
-  CardBody,
-  Table,
-  Container,
-  Row,
-  Col,
-  Button
+  Container, Spinner, Table, Input, Label, Row, Col
 } from "reactstrap";
 import Header from "components/Headers/Header.js";
 
-const Index = () => {
-  const [jobs, setJobs] = useState([]);
+export default function JobRecommendations() {
+  /* ------------------------- url parameters ------------------------- */
+  const [searchParams] = useSearchParams();
+  const userId = localStorage.getItem("user_id");
 
+  /* ---------------------------- state ------------------------------- */
+  const [docs,          setDocs]   = useState([]);      // list of CVs
+  const [selectedDocId, setDocId]  = useState("");      // the chosen one
+  const [jobs,          setJobs]   = useState([]);
+  const [loading,       setLoad]   = useState(false);
+  const [error,         setError]  = useState(null);
+
+  /* 1️⃣  load the user’s documents once -------------------------------- */
   useEffect(() => {
-    axios.get("/api/jobs/recommendations")
-      .then(response => setJobs(response.data))
-      .catch(error => console.error("Error fetching recommended jobs:", error));
-  }, []);
+    if (!userId) return;
 
+    (async () => {
+      try {
+        const { data } = await axios.get(
+          "http://localhost:5000/api/cvs",
+          { params: { user_id: userId }, timeout: 10000 }
+        );
+        setDocs(data);
+        // optionally pre-select the first CV
+        if (data.length) setDocId(data[0].id);
+      } catch (err) {
+        console.error(err);
+        setError("Couldn’t load your documents");
+      }
+    })();
+  }, [userId]);
+
+  /* 2️⃣  every time selectedDocId changes → fetch recommendations ------- */
+  useEffect(() => {
+    if (!userId || !selectedDocId) return;
+
+    (async () => {
+      setLoad(true);
+      try {
+        const { data } = await axios.get(
+          "http://localhost:5000/api/jobs/recommendations",
+          {
+            params : { doc_id: selectedDocId, user_id: userId },
+            timeout: 10000
+          }
+        );
+        setJobs(Array.isArray(data) ? data : []);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setError(err.response?.data?.error || err.message);
+        setJobs([]);
+      } finally {
+        setLoad(false);
+      }
+    })();
+  }, [selectedDocId, userId]);
+
+  /* --------------------------- render ------------------------------- */
   return (
     <>
       <Header />
       <Container className="mt--7" fluid>
-        <Row>
-          <Col xl="12">
-            <Card className="shadow">
-              <CardHeader className="border-0">
-                <Row className="align-items-center">
-                  <div className="col">
-                    <h3 className="mb-0">Recommended Job Listings</h3>
-                  </div>
-                  <div className="col text-right">
-                    <Button color="primary" size="sm" onClick={() => window.location.reload()}>Refresh</Button>
-                  </div>
-                </Row>
-              </CardHeader>
-              <CardBody>
-                <Table className="align-items-center table-flush" responsive>
-                  <thead className="thead-light">
-                    <tr>
-                      <th scope="col">Job Title</th>
-                      <th scope="col">Company</th>
-                      <th scope="col">Location</th>
-                      <th scope="col">Posted Date</th>
-                      <th scope="col">Apply</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobs.length > 0 ? (
-                      jobs.map((job, index) => (
-                        <tr key={index}>
-                          <td>{job.title}</td>
-                          <td>{job.company}</td>
-                          <td>{job.location}</td>
-                          <td>{job.postedDate}</td>
-                          <td>
-                            <a href={job.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Apply</a>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">No recommended jobs found</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </Table>
-              </CardBody>
-            </Card>
+
+        {/* pick the CV -------------------------------------------------- */}
+        <Row className="mb-4">
+          <Col md="4">
+            <Label for="cvSelect">Choose a résumé / CV</Label>
+            <Input
+              id="cvSelect"
+              type="select"
+              value={selectedDocId}
+              onChange={e => setDocId(e.target.value)}
+            >
+              {docs.map(doc => (
+                <option key={doc.id} value={doc.id}>
+                  {doc.name}
+                </option>
+              ))}
+            </Input>
           </Col>
         </Row>
+
+        {/* results ------------------------------------------------------ */}
+        {loading ? (
+          <div className="text-center">
+            <Spinner style={{ width: "3rem", height: "3rem" }} />
+          </div>
+        ) : (
+          <>
+            {error && <p className="text-danger">{error}</p>}
+
+            <Table responsive hover>
+              <thead>
+                <tr>
+                  <th>Job Title</th>
+                  <th>Company</th>
+                  <th>Location</th>
+                  <th style={{ width: 90 }}>Apply</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="text-center">
+                      No jobs found
+                    </td>
+                  </tr>
+                ) : (
+                  jobs.map(job => (
+                    <tr key={job._id}>
+                      <td>{job.title}</td>
+                      <td>{job.company}</td>
+                      <td>{job.location}</td>
+                      <td>
+                        <a
+                          href={job.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-primary"
+                        >
+                          Apply
+                        </a>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </Table>
+          </>
+        )}
       </Container>
     </>
   );
-};
-
-export default Index;
+}

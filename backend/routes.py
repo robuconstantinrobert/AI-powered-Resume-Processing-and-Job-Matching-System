@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services import process_cv_service, process_cv_with_esco_service
-from mongo import get_documents_collection, save_multiple_job_results, clean_mongo_doc, create_user, get_user_by_email, get_user_by_id
+from mongo import get_documents_collection, save_multiple_job_results, clean_mongo_doc, create_user, get_user_by_email, get_user_by_id, get_documents_by_user_id, get_jobs_by_cv_id
 from bson.objectid import ObjectId
 from sentence_transformers import SentenceTransformer
 from selenium import webdriver
@@ -170,23 +170,52 @@ def linkedin_login():
 def linkedin_search_jobs():
     try:
         data = request.get_json()
-        search_term = data.get("search_term")
+        #search_term = data.get("search_term")
+        doc_id = data.get("_id")
         user_id = data.get("user_id", "default")
+        print(doc_id)
+        print(user_id)
 
-        if not search_term:
-            return jsonify({"error": "Câmpul 'search_term' este obligatoriu."}), 400
+        if not doc_id:
+            return jsonify({"error": "Câmpul 'doc_id' este obligatoriu."}), 400
 
         cookie_file = f"linkedin_cookies/{user_id}.json"
         if not os.path.exists(cookie_file):
+            print("INTRA AICI")
             return jsonify({"error": f"Nu există cookie pentru user_id: {user_id}"}), 404
 
         # Configurare Chrome
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--headless=new")
+        #chrome_options.add_argument("--headless=new")
         driver = webdriver.Chrome(options=chrome_options)
 
+
+        docs_col = get_documents_collection()
+        try:
+            query = {
+              "_id": ObjectId(doc_id),
+              "utilizator_id": ObjectId(user_id)
+            }
+        except Exception:
+            return jsonify({
+              "error": "doc_id sau user_id are un format incorect."
+            }), 400
+        
+        doc = docs_col.find_one(query)
+
+        if not doc:
+            print("INTRA AICI 2")
+            return jsonify({"error": f"Document cu _id={doc_id} nu a fost găsit."}), 404
+        
+        roles = doc.get("date_extrase", {}).get("job_titles", [])
+        print("ERROR 7")
+        if not roles:
+            print("INTRA AICI 3")
+            return jsonify({"error": "Nu există roluri sugerate pentru acest document."}), 400
+
+        jobs_data = []
         try:
             # Autentificare cu cookie-uri
             print("Logging in...")
@@ -196,21 +225,22 @@ def linkedin_search_jobs():
             # Inițializare și căutare joburi
             print("Starting search...")
             job_search = FixedJobSearch(driver=driver, close_on_complete=False, scrape=False)
-            job_listings = job_search.search(search_term)
+            for role in roles:
+                job_listings = job_search.search(role)
 
-            # Formatul de răspuns
-            jobs_data = []
-            for job in job_listings:
-                job_doc = {
-                    "title": job.job_title,
-                    "company": job.company,
-                    "location": job.location,
-                    "salary": job.salary,
-                    "url": job.linkedin_url,
-                    "user_id": user_id,
-                    "search_term": search_term,
-                }
-                jobs_data.append(job_doc)
+                # Formatul de răspuns
+                for job in job_listings:
+                    job_doc = {
+                        "title": job.job_title,
+                        "company": job.company,
+                        "location": job.location,
+                        "salary": job.salary,
+                        "url": job.linkedin_url,
+                        "user_id": user_id,
+                        "source_cv_id":  ObjectId(doc_id),
+                        "search_term": role,
+                    }
+                    jobs_data.append(job_doc)
 
             if jobs_data:
                 save_multiple_job_results(jobs_data)
@@ -288,3 +318,41 @@ def login_user():
         "token": token,
         "user_id": str(user["_id"])
     }), 200
+
+
+@api_bp.route("/jobs/recommendations", methods=["GET"])
+def get_job_recommendations():
+    doc_id  = request.args.get("doc_id")
+    user_id = request.args.get("user_id")
+
+    if not doc_id or not user_id:
+        return jsonify({ "error": "Missing doc_id or user_id query parameter" }), 400
+
+    try:
+        query = {
+            "source_cv_id": ObjectId(doc_id),
+            "user_id":      user_id
+        }
+    except Exception:
+        return jsonify({ "error": "Invalid doc_id format" }), 400
+
+    all_jobs = get_jobs_by_cv_id(doc_id)
+    filtered = [job for job in all_jobs if job.get("user_id") == user_id]
+
+    out = [clean_mongo_doc(j) for j in filtered]
+    return jsonify(out), 200
+
+@api_bp.route("/cvs", methods=["GET"])
+def get_cvs_for_user():
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+
+    cvs = get_documents_by_user_id(user_id)
+    docs = []
+    for cv in cvs:
+        docs.append({
+            "id":   str(cv["_id"]),
+            "name": cv.get("file_name", "Untitled CV")
+        })
+    return jsonify(docs), 200

@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+import { Spinner } from "reactstrap";
 import React, { useState, useEffect } from "react";
 import { 
   Card,
@@ -13,6 +15,7 @@ import Header from "components/Headers/Header.js";
 import EditModal from "./EditModal.js";
 
 const ResumeJobMatching = () => {
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [useEsco, setUseEsco] = useState(false);
@@ -22,6 +25,8 @@ const ResumeJobMatching = () => {
   const [documents, setDocuments] = useState([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [currentDocId, setCurrentDocId] = useState(null);
+  const [searchResults, setSearchResults] = useState({});
+  
 
 
   useEffect(() => {
@@ -123,6 +128,35 @@ const ResumeJobMatching = () => {
   const openEditModal = (docId) => {
     setCurrentDocId(docId);
     setEditModalOpen(true);
+  };
+
+  const handleSearch = async (docId) => {
+    const userId = localStorage.getItem("user_id");
+    if (!docId || !userId) return;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/linkedin/search-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ _id: docId, user_id: userId })
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || "Search failed");
+      }
+      const { count, results } = await res.json();
+      console.log(`Found ${count} jobs for doc ${docId}`, results);
+
+      navigate(`/jobs?docId=${docId}&userId=${userId}`);
+
+      // store under this docId so you can render later
+      setSearchResults(prev => ({
+        ...prev,
+        [docId]: results
+      }));
+    } catch (err) {
+      console.error("LinkedIn search error:", err);
+    }
   };
 
   
@@ -237,7 +271,12 @@ const ResumeJobMatching = () => {
                           >
                             <i className="fas fa-trash" />
                           </Button>
-                          <Button color="info" size="sm" className="mr-2">
+                          <Button
+                            color="info"
+                            size="sm"
+                            className="mr-2"
+                            onClick={() => handleSearch(doc._id)}
+                          >
                             <i className="fas fa-search" />
                           </Button>
                           <Button

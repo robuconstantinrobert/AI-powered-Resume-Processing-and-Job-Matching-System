@@ -45,12 +45,20 @@ def save_multiple_job_results(data_list):
     return result.inserted_ids
 
 
+def get_documents_by_user_id(user_id):
+    """
+    Returnează toate joburile legate de un document CV anume.
+    """
+    collection = get_documents_collection()
+    return list(collection.find({"utilizator_id": ObjectId(user_id)}))
+
 def get_jobs_by_cv_id(cv_id):
     """
     Returnează toate joburile legate de un document CV anume.
     """
     collection = get_jobs_collection()
     return list(collection.find({"source_cv_id": ObjectId(cv_id)}))
+
 
 def clean_mongo_doc(doc):
     """
