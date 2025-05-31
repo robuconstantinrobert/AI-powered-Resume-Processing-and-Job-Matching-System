@@ -134,7 +134,7 @@ def linkedin_login():
 
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--headless=new")
+    # options.add_argument("--headless=new")
     # options.add_argument("--headless")  # poți activa pentru rulare fără UI
 
     driver = webdriver.Chrome(options=options)
@@ -414,7 +414,6 @@ def delete_applied_jobs():
 
     return jsonify({"deleted": result.deleted_count}), 200
 
-# ─── Dashboard stats ──────────────────────────────────────────────────────────
 from datetime import datetime
 from bson import ObjectId
 from flask import request, jsonify
@@ -426,7 +425,6 @@ def dashboard_stats():
     if not user_id:
         return jsonify({"error": "Missing user_id"}), 400
 
-    # user_id is a string in job_results but an ObjectId in documents
     try:
         user_oid = ObjectId(user_id)
     except Exception:
@@ -443,7 +441,6 @@ def dashboard_stats():
     })
     pending_jobs    = total_jobs - applied_jobs
 
-    # last upload & last match are nice to have
     last_resume_doc = docs_col.find(
         {"utilizator_id": user_oid},
         {"created_at": 1}
