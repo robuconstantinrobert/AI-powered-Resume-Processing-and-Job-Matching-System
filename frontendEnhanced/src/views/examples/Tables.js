@@ -8,7 +8,8 @@ import {
   Container,
   Row,
   Button,
-  CardBody
+  CardBody,
+  Spinner
 } from "reactstrap";
 import Header from "components/Headers/Header.js";
 import EditModal from "./EditModal.js";
@@ -24,6 +25,7 @@ const ResumeJobMatching = () => {
   const [documents, setDocuments] = useState([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [currentDocId, setCurrentDocId] = useState(null);
+  const [searchLoading,  setSearchLoading]  = useState(false);
   
 
   useEffect(() => {
@@ -131,6 +133,7 @@ const ResumeJobMatching = () => {
     if (!docId || !userId) return;
 
     try {
+      setSearchLoading(true);
       const res = await fetch("http://localhost:5000/api/linkedin/search-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,6 +150,7 @@ const ResumeJobMatching = () => {
 
     } catch (err) {
       console.error("LinkedIn search error:", err);
+      setSearchLoading(false);
     }
   };
 
@@ -156,6 +160,14 @@ const ResumeJobMatching = () => {
   return (
     <>
       <Header />
+      {searchLoading && (
+        <div
+          className="position-fixed w-100 h-100 d-flex justify-content-center align-items-center"
+          style={{ top: 0, left: 0, background: "rgba(255,255,255,0.6)", zIndex: 1050 }}
+        >
+          <Spinner style={{ width: "3rem", height: "3rem" }} />
+        </div>
+      )}
       <Container className="mt--7" fluid>
         <Row>
           <div className="col">
