@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services import process_cv_service, process_cv_with_esco_service
-from mongo import get_documents_collection, save_multiple_job_results, clean_mongo_doc, create_user, get_user_by_email, get_user_by_id, get_documents_by_user_id, get_jobs_by_cv_id
+from mongo import get_documents_collection, save_multiple_job_results, clean_mongo_doc, create_user, get_user_by_email, get_user_by_id, get_documents_by_user_id, get_jobs_by_cv_id, get_jobs_collection
 from bson.objectid import ObjectId
 from sentence_transformers import SentenceTransformer
 from selenium import webdriver
@@ -233,6 +233,7 @@ def linkedin_search_jobs():
                         "user_id": user_id,
                         "source_cv_id":  ObjectId(doc_id),
                         "search_term": role,
+                        "applied_status": False
                     }
                     jobs_data.append(job_doc)
 
@@ -350,3 +351,66 @@ def get_cvs_for_user():
             "name": cv.get("file_name", "Untitled CV")
         })
     return jsonify(docs), 200
+
+
+from bson import ObjectId
+from flask import request, jsonify, current_app as app
+
+@api_bp.route("/jobs/<job_id>/apply", methods=["PUT"])
+def mark_job_as_applied(job_id):
+    data     = request.get_json(silent=True) or {}
+    user_id  = data.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+
+    try:
+        job_oid = ObjectId(job_id)      
+    except Exception:
+        return jsonify({"error": "Invalid job_id format"}), 400
+
+    coll = get_jobs_collection()                      
+
+    result = coll.find_one_and_update(
+        {"_id": job_oid, "user_id": user_id},   
+        {"$set": {"applied_status": True}},
+        return_document=True               
+    )
+
+    if result is None:
+        return jsonify({"error": "Job not found for this user"}), 404
+
+    job_json = {
+        "_id"           : str(result["_id"]),
+        "title"         : result["title"],
+        "company"       : result["company"],
+        "location"      : result["location"],
+        "salary"        : result.get("salary"),
+        "url"           : result["url"],
+        "search_term"   : result.get("search_term"),
+        "applied_status": result.get("applied_status", False)
+    }
+    return jsonify(job_json), 200
+
+
+@api_bp.route("/jobs/cleanup", methods=["DELETE"])
+def delete_applied_jobs():
+    cv_id   = request.args.get("doc_id")
+    user_id = request.args.get("user_id")
+    if not cv_id or not user_id:
+        return jsonify({"error": "Missing doc_id or user_id"}), 400
+
+    try:
+        cv_oid = ObjectId(cv_id)
+    except Exception:
+        return jsonify({"error": "Invalid doc_id format"}), 400
+
+    coll   = get_jobs_collection()
+    result = coll.delete_many({
+        "source_cv_id": cv_oid,   
+        "user_id":      user_id,  
+        "applied_status": True   
+    })
+
+    return jsonify({"deleted": result.deleted_count}), 200
+

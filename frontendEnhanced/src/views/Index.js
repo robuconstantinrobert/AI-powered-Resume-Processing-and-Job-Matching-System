@@ -1,18 +1,25 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  Container, Spinner, Table, Input, Label, Row, Col
+  Container,
+  Spinner,
+  Table,
+  Input,
+  Label,
+  Row,
+  Col
 } from "reactstrap";
 import Header from "components/Headers/Header.js";
 
 export default function JobRecommendations() {
   const userId = localStorage.getItem("user_id");
 
-  const [docs,          setDocs]   = useState([]);      
-  const [selectedDocId, setDocId]  = useState("");     
-  const [jobs,          setJobs]   = useState([]);
-  const [loading,       setLoad]   = useState(false);
-  const [error,         setError]  = useState(null);
+  const [docs,          setDocs]      = useState([]);
+  const [selectedDocId, setDocId]     = useState("");
+  const [jobs,          setJobs]      = useState([]);
+  const [loading,       setLoad]      = useState(false);
+  const [error,         setError]     = useState(null);
+  const [deleting,      setDeleting]  = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -21,7 +28,7 @@ export default function JobRecommendations() {
       try {
         const { data } = await axios.get(
           "http://localhost:5000/api/cvs",
-          { params: { user_id: userId }, timeout: 10000 }
+          { params: { user_id: userId }, timeout: 10_000 }
         );
         setDocs(data);
         if (data.length) setDocId(data[0].id);
@@ -31,6 +38,7 @@ export default function JobRecommendations() {
       }
     })();
   }, [userId]);
+
 
   useEffect(() => {
     if (!userId || !selectedDocId) return;
@@ -42,10 +50,15 @@ export default function JobRecommendations() {
           "http://localhost:5000/api/jobs/recommendations",
           {
             params : { doc_id: selectedDocId, user_id: userId },
-            timeout: 10000
+            timeout: 10_000
           }
         );
-        setJobs(Array.isArray(data) ? data : []);
+
+        const prepared = Array.isArray(data)
+          ? data.map(j => ({ applied_status: false, ...j }))
+          : [];
+
+        setJobs(prepared);
         setError(null);
       } catch (err) {
         console.error(err);
@@ -57,13 +70,52 @@ export default function JobRecommendations() {
     })();
   }, [selectedDocId, userId]);
 
+  const handleApply = async (job) => {
+    window.open(job.url, "_blank", "noopener,noreferrer");
+
+    try {
+      await axios.put(
+        `http://localhost:5000/api/jobs/${job._id}/apply`,
+        { user_id: userId }
+      );
+
+      setJobs(prev =>
+        prev.map(j =>
+          j._id === job._id ? { ...j, applied_status: true } : j
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Couldn’t mark job as applied. Try again?");
+    }
+  };
+
+  const handleDeleteApplied = async () => {
+    if (jobs.every(j => !j.applied_status)) return; 
+
+
+    try {
+      setDeleting(true);
+      await axios.delete("http://localhost:5000/api/jobs/cleanup", {
+        params : { doc_id: selectedDocId, user_id: userId },
+        timeout: 10_000
+      });
+
+      setJobs(prev => prev.filter(j => !j.applied_status));
+    } catch (err) {
+      console.error(err);
+      setError("Couldn’t delete applied jobs. Try again?");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <Header />
-      <Container className="mt--7" fluid>
 
-        
-        <Row className="mb-4">
+      <Container className="mt--7" fluid>
+        <Row className="mb-4 align-items-end">
           <Col md="4">
             <Label for="cvSelect">Choose Document</Label>
             <Input
@@ -73,11 +125,19 @@ export default function JobRecommendations() {
               onChange={e => setDocId(e.target.value)}
             >
               {docs.map(doc => (
-                <option key={doc.id} value={doc.id}>
-                  {doc.name}
-                </option>
+                <option key={doc.id} value={doc.id}>{doc.name}</option>
               ))}
             </Input>
+          </Col>
+
+          <Col className="text-right">
+            <button
+              className="btn btn-danger"
+              onClick={handleDeleteApplied}
+              disabled={deleting || jobs.every(j => !j.applied_status)}
+            >
+              {deleting ? "Deleting…" : "Delete applied jobs"}
+            </button>
           </Col>
         </Row>
 
@@ -107,19 +167,21 @@ export default function JobRecommendations() {
                   </tr>
                 ) : (
                   jobs.map(job => (
-                    <tr key={job._id}>
+                    <tr
+                      key={job._id}
+                      className={job.applied_status ? "table-success" : ""}
+                    >
                       <td>{job.title}</td>
                       <td>{job.company}</td>
                       <td>{job.location}</td>
                       <td>
-                        <a
-                          href={job.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
                           className="btn btn-sm btn-primary"
+                          onClick={() => handleApply(job)}
+                          disabled={job.applied_status}
                         >
-                          Apply
-                        </a>
+                          {job.applied_status ? "Applied ✓" : "Apply"}
+                        </button>
                       </td>
                     </tr>
                   ))
