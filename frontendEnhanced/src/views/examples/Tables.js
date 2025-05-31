@@ -26,6 +26,7 @@ const ResumeJobMatching = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [currentDocId, setCurrentDocId] = useState(null);
   const [searchLoading,  setSearchLoading]  = useState(false);
+  const [dashRefresh, setDashRefresh] = useState(0);
   
 
   useEffect(() => {
@@ -100,6 +101,7 @@ const ResumeJobMatching = () => {
       const data = await response.json();
       console.log("Upload result:", data);
       setUploadStatus("Upload successful!");
+      setDashRefresh(k => k + 1);
     } catch (err) {
       console.error(err);
       setUploadStatus("Upload failed. Please try again.");
@@ -118,6 +120,7 @@ const ResumeJobMatching = () => {
       if (!response.ok) throw new Error("Failed to delete document");
 
       setDocuments((prevDocs) => prevDocs.filter((doc) => doc._id !== documentId));
+      setDashRefresh(k => k + 1);
     } catch (err) {
       console.error("Error deleting document:", err);
     }
@@ -159,7 +162,7 @@ const ResumeJobMatching = () => {
 
   return (
     <>
-      <Header />
+      <Header refreshKey={dashRefresh} />
       {searchLoading && (
         <div
           className="position-fixed w-100 h-100 d-flex justify-content-center align-items-center"

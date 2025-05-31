@@ -20,6 +20,7 @@ export default function JobRecommendations() {
   const [loading,       setLoad]      = useState(false);
   const [error,         setError]     = useState(null);
   const [deleting,      setDeleting]  = useState(false);
+  const [dashRefresh, setDashRefresh] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
@@ -84,6 +85,7 @@ export default function JobRecommendations() {
           j._id === job._id ? { ...j, applied_status: true } : j
         )
       );
+      setDashRefresh(k => k+1);
     } catch (err) {
       console.error(err);
       alert("Couldn’t mark job as applied. Try again?");
@@ -102,6 +104,7 @@ export default function JobRecommendations() {
       });
 
       setJobs(prev => prev.filter(j => !j.applied_status));
+      setDashRefresh(k => k + 1);
     } catch (err) {
       console.error(err);
       setError("Couldn’t delete applied jobs. Try again?");
@@ -112,7 +115,7 @@ export default function JobRecommendations() {
 
   return (
     <>
-      <Header />
+      <Header refreshKey={dashRefresh} />
 
       <Container className="mt--7" fluid>
         <Row className="mb-4 align-items-end">

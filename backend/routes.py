@@ -414,3 +414,55 @@ def delete_applied_jobs():
 
     return jsonify({"deleted": result.deleted_count}), 200
 
+# ─── Dashboard stats ──────────────────────────────────────────────────────────
+from datetime import datetime
+from bson import ObjectId
+from flask import request, jsonify
+
+@api_bp.route("/dashboard/stats", methods=["GET"])
+def dashboard_stats():
+    """Return aggregate counters for the header dashboard."""
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+
+    # user_id is a string in job_results but an ObjectId in documents
+    try:
+        user_oid = ObjectId(user_id)
+    except Exception:
+        return jsonify({"error": "Invalid user_id format"}), 400
+
+    docs_col  = get_documents_collection()
+    jobs_col  = get_jobs_collection()
+
+    total_resumes   = docs_col.count_documents({"utilizator_id": user_oid})
+    total_jobs      = jobs_col.count_documents({"user_id": user_id})
+    applied_jobs    = jobs_col.count_documents({
+        "user_id": user_id,
+        "applied_status": True
+    })
+    pending_jobs    = total_jobs - applied_jobs
+
+    # last upload & last match are nice to have
+    last_resume_doc = docs_col.find(
+        {"utilizator_id": user_oid},
+        {"created_at": 1}
+    ).sort("created_at", -1).limit(1)
+    last_resume_ts  = next(last_resume_doc, {}).get("created_at")
+
+    last_job_doc = jobs_col.find(
+        {"user_id": user_id},
+        {"_id": 0, "timestamp": 1}
+    ).sort("timestamp", -1).limit(1)
+    last_job_ts  = next(last_job_doc, {}).get("timestamp")
+
+    return jsonify({
+        "total_resumes":   total_resumes,
+        "total_jobs":      total_jobs,
+        "applied_jobs":    applied_jobs,
+        "pending_jobs":    pending_jobs,
+        "last_resume_at":  last_resume_ts,
+        "last_job_at":     last_job_ts,
+    }), 200
+
+
