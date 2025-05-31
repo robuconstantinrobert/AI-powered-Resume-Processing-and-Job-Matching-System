@@ -42,6 +42,10 @@ def process_cv_with_esco():
     emb = request.form.get('emb', 'minilm')
     model = request.form.get('model', 'tinyllama')
     top = request.form.get('top', 3)
+    try:
+        top = int(request.form.get('top', 3))
+    except:
+        return jsonify({"error": "top must be integer"}), 400
     user_id = request.form.get('user_id')
     file_name = request.form.get('file_name', 'document.pdf')
 
