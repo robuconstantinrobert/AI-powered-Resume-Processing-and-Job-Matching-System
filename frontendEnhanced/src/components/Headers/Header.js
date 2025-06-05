@@ -60,7 +60,7 @@ const Header = ({ refreshKey = 0 }) => {          // ← NEW
         <div className="header-body">
           <Row>
             <Col>
-              <h2 className="text-white">Resume Job Matching Dashboard</h2>
+              <h2 className="text-white">Resume Job Matching</h2>
               <p className="text-white mt-3">
                 Monitor and manage resumes and job matches
               </p>

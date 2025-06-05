@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import {
   UncontrolledCollapse,
-  NavbarBrand,
   Navbar,
   NavItem,
   NavLink,
@@ -16,12 +15,6 @@ const AdminNavbar = () => {
     <>
       <Navbar className="navbar-top navbar-horizontal navbar-dark" expand="md">
         <Container className="px-4">
-          <NavbarBrand to="/" tag={Link}>
-            <img
-              alt="..."
-              src={require("../../assets/img/brand/argon-react-white.png")}
-            />
-          </NavbarBrand>
           <button className="navbar-toggler" id="navbar-collapse-main">
             <span className="navbar-toggler-icon" />
           </button>
@@ -48,7 +41,7 @@ const AdminNavbar = () => {
               <NavItem>
                 <NavLink className="nav-link-icon" to="/" tag={Link}>
                   <i className="ni ni-planet" />
-                  <span className="nav-link-inner--text">Dashboard</span>
+                  <span className="nav-link-inner--text">Jobs</span>
                 </NavLink>
               </NavItem>
               <NavItem>
