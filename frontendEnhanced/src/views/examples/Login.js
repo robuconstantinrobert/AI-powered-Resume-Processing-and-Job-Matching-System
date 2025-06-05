@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Button,
   Card,
-  CardHeader,
   CardBody,
   FormGroup,
   Form,
@@ -11,7 +10,6 @@ import {
   InputGroupAddon,
   InputGroupText,
   InputGroup,
-  Row,
   Col,
   Alert
 } from "reactstrap";
@@ -41,8 +39,6 @@ const Login = () => {
             navigate("/admin/index");
           }, 1000
         );
-
-        // aici poți face redirect sau alt comportament
       }
     } catch (err) {
       const msg = err.response?.data?.error || "Eroare la autentificare.";
