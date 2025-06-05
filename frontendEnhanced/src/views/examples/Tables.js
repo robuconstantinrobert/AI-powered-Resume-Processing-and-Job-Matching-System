@@ -268,9 +268,7 @@ const ResumeJobMatching = () => {
                             size="sm"
                             className="mr-2"
                             onClick={() => {
-                              if (window.confirm("Are you sure you want to delete this document?")) {
-                                handleDelete(doc._id);
-                              }
+                              handleDelete(doc._id);
                             }}
                           >
                             <i className="fas fa-trash" />
