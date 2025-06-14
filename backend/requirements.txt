@@ -1,3 +1,4 @@
+numpy==1.26.4
 torch
 transformers
 sentence-transformers
@@ -24,3 +25,8 @@ requests
 lxml
 PyJWT
 flask-cors
+torch==2.1.0+cu118
+torchvision==0.16.0+cu118
+torchaudio==2.1.0+cu118
+--extra-index-url https://download.pytorch.org/whl/cu118
+numpy==1.26.4
