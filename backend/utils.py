@@ -46,55 +46,102 @@ QUANT_CFG = BitsAndBytesConfig(
 
 torch.set_num_threads(min(4, os.cpu_count() or 4))
 
-# def clean_text(file):
-#     pdf = fitz.open(stream=file.read(), filetype='pdf')
-#     raw = "\n".join(page.get_text() for page in pdf)
-#     txt = re.sub(r"\b\d{7,}\b|\S+@\S+|https?://\S+|www\.\S+", " ", raw)
-#     keep = []
-#     SECTION_HEADINGS = {
-#         "contact","about me","projects","work experience","education",
-#         "certifications","languages","skills","qualities"
-#     }
-#     def _is_heading(line): 
-#         t = line.strip().lower()
-#         return t.isupper() and any(t.startswith(h) for h in SECTION_HEADINGS)
-#     for ln in txt.splitlines():
-#         ln = ln.strip()
-#         if not ln or _is_heading(ln) or (ln.isupper() and len(ln.split()) <= 2):
-#             continue
-#         keep.append(ln)
-#     txt = " ".join(keep)
-#     txt = re.sub(r"[^A-Za-z0-9.,:/\\+& -]", " ", txt)
-#     txt = re.sub(r"\s{2,}", " ", txt).lower().strip()
-#     return txt
-def clean_text(file):
+SECTION_KEYWORDS = {
+    "contact", "about", "summary", "projects", "experience", "education",
+    "certifications", "languages", "skills", "qualities", "publications",
+    "interests", "awards", "volunteer"
+}
+
+PHONE_RE = re.compile(
+    r"(\+?\d{1,3}[\s\-.])?"   
+    r"\(?\d{2,4}\)?[\s\-.]?"   
+    r"\d{2,4}[\s\-.]?\d{2,4}",
+)
+EMAIL_URL_RE = re.compile(r"\S+@\S+|https?://\S+|www\.\S+", re.IGNORECASE)
+
+def clean_text(file) -> str:
+    """
+    1) Extracts each line’s text + bbox via fitz.
+    2) Learns the header/footer y-zones (top/bottom 10% by average).
+    3) Filters out any line within those zones.
+    4) Groups remaining lines into “paragraphs” by vertical proximity.
+    5) Strips phones, emails, URLs, non-essential punctuation, extra spaces.
+    6) Drops section headers (all-caps + startswith keyword) and tiny labels.
+    """
     if isinstance(file, str) and not Path(file).is_file():
         raw = file
+        lines_with_bbox = []
     else:
-        pdf = fitz.open(stream=file.read(), filetype='pdf')
-        raw = "\n".join(page.get_text() for page in pdf)
+        data = file.read()
+        doc = fitz.open(stream=data, filetype="pdf")
+        lines_with_bbox = [] 
+        header_zones = []
+        footer_zones = []
 
-    txt = re.sub(r"\b\d{7,}\b|\S+@\S+|https?://\S+|www\.\S+", " ", raw)
-    keep = []
-    SECTION_HEADINGS = {
-        "contact", "about me", "projects", "work experience", "education",
-        "certifications", "languages", "skills", "qualities"
-    }
+        for page in doc:
+            H = page.rect.height
+            header_zones.append((0, H * 0.1))
+            footer_zones.append((H * 0.9, H))
 
-    def _is_heading(line):
-        t = line.strip().lower()
-        return t.isupper() and any(t.startswith(h) for h in SECTION_HEADINGS)
+            txt_dict = page.get_text("dict")
+            for block in txt_dict["blocks"]:
+                for line in block.get("lines", []):
+                    text = "".join(span["text"] for span in line["spans"]).strip()
+                    if not text:
+                        continue
+                    x0, y0, x1, y1 = line["bbox"]
+                    lines_with_bbox.append((text, y0, y1))
 
+        doc.close()
+
+    if not lines_with_bbox:
+        txt = raw
+    else:
+        h_min = sum(lo for lo, _ in header_zones) / len(header_zones)
+        h_max = sum(hi for _, hi in header_zones) / len(header_zones)
+        f_min = sum(lo for lo, _ in footer_zones) / len(footer_zones)
+        f_max = sum(hi for _, hi in footer_zones) / len(footer_zones)
+
+        kept = [
+            (t, y0, y1)
+            for t, y0, y1 in lines_with_bbox
+            if not (h_min <= y1 <= h_max or f_min <= y0 <= f_max)
+        ]
+
+        kept.sort(key=lambda x: x[1])
+        paras = []
+        cur_lines = [kept[0][0]]
+        last_bot = kept[0][2]
+
+        for text, y0, y1 in kept[1:]:
+            if abs(y0 - last_bot) < 5:
+                cur_lines.append(text)
+            else:
+                paras.append(" ".join(cur_lines))
+                cur_lines = [text]
+            last_bot = y1
+        paras.append(" ".join(cur_lines))
+
+        txt = "\n\n".join(paras)
+
+    txt = PHONE_RE.sub(" ", txt)
+    txt = EMAIL_URL_RE.sub(" ", txt)
+    txt = re.sub(r"[^\w\s\.\,\-\/&]", " ", txt)
+    txt = re.sub(r"\s{2,}", " ", txt).strip()
+
+    final_lines = []
     for ln in txt.splitlines():
         ln = ln.strip()
-        if not ln or _is_heading(ln) or (ln.isupper() and len(ln.split()) <= 2):
+        if not ln:
             continue
-        keep.append(ln)
+        low = ln.lower()
+        if ln.isupper() and any(low.startswith(k) for k in SECTION_KEYWORDS):
+            continue
+        if ln.isupper() and len(ln.split()) <= 3:
+            continue
+        final_lines.append(ln)
 
-    txt = " ".join(keep)
-    txt = re.sub(r"[^A-Za-z0-9.,:/\\+& -]", " ", txt)
-    txt = re.sub(r"\s{2,}", " ", txt).lower().strip()
-    return txt
+    return " ".join(final_lines)
 
 
 def _sha1(s): return hashlib.sha1(s.encode()).hexdigest()
@@ -114,20 +161,23 @@ def embed(texts, emb_key):
 
 def load_llm_hf(local_dir):
     tok = AutoTokenizer.from_pretrained(local_dir, trust_remote_code=True)
-    if torch.cuda.is_available():
-        try:
-            model = AutoModelForCausalLM.from_pretrained(
-                local_dir, device_map="auto",
-                quantization_config=QUANT_CFG, trust_remote_code=True)
-            return tok, model
-        except Exception as e:
-            print("[warn] 4-bit GPU load failed – falling back to CPU:", e)
-    
-    dtype = torch.bfloat16 if getattr(torch, "bfloat16", None) else torch.float32
-    model = AutoModelForCausalLM.from_pretrained(
-        local_dir, device_map={"": "cpu"},
-        torch_dtype=dtype, low_cpu_mem_usage=True,
-        trust_remote_code=True)
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            local_dir,
+            device_map="cuda",
+            torch_dtype=torch.bfloat16,       
+            quantization_config=QUANT_CFG, 
+            trust_remote_code=True,
+        )
+    except Exception as e:
+        print("[warn] Could not load on GPU, falling back to CPU:", e)
+        model = AutoModelForCausalLM.from_pretrained(
+            local_dir,
+            device_map={"": "cpu"},
+            torch_dtype=torch.float32,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+        )
     return tok, model
 
 def load_llm_gguf(gguf_path):
@@ -148,34 +198,32 @@ def load_llm_gguf(gguf_path):
 def build_prompt(model_key, resume, tok):
     if model_key == "tinyllama":
         return (
-            "You are an HR assistant.\n"
-            "Reply ONLY with valid JSON.\n\n"
+            "You are given a Résumé.\n" + resume + "\n\n"
+            "Reply ONLY with valid JSON and find possible suggested roles, skills and a seniority level based on the given resume\n\n"
             "Required keys & limits:\n"
-            "  job_titles        (max 3)\n"
-            "  skills            (max 10)\n"
-            "  suggested_roles   (exact 3)\n"
+            "  job_titles        (maximum of 3)\n"
+            "  skills            (maximum of 5)\n"
+            "  suggested_roles   (exactly 3)\n"
             "  seniority_level   (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\")\n\n"
-            "Résumé:\n" + resume + "\n\nJSON:\n"
+            "Return a valid JSON with the required keys, JSON:\n"
         )
     elif model_key == "zephyr":
         return (
-            "<|system|>You are a helpful HR assistant.<|end|>\n"
-            "<|user|>Extract structured data from the résumé below.\n"
-            "Return ONLY valid JSON with keys:\n"
-            "  job_titles (max 3)\n"
-            "  skills (max 10)\n"
-            "  suggested_roles (exact 3)\n"
+            "<|system|>You are given a Résumé.\n" + resume + "\n<|end|>\n"
+            "<|user|>Extract structured data from the résumé below.Reply ONLY with valid JSON and find possible suggested roles, skills and a seniority level based on the given resume\n"
+            "  job_titles (maximum of 3)\n"
+            "  skills (maximum of 5)\n"
+            "  suggested_roles (exactly 3)\n"
             "  seniority_level (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\")\n\n"
-            "Résumé:\n" + resume + "<|end|>\n"
-            "<|assistant|>"
+            "<|assistant|> Return a valid JSON with the required keys, JSON:\n"
         )
     else:
-        sys = "<|im_start|>system\nYou are an HR assistant.<|im_end|>\n"
+        sys = "<|im_start|>system\nYou are given a Résumé.\n" + resume + "\n<|im_end|>\n"
         usr = (
             "<|im_start|>user\n"
-            "Extract job_titles (max 3), skills (max 10), suggested_roles "
-            "(exact 3) and seniority_level (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\") from the résumé below and reply with ONLY JSON.\n\n"
-            + resume + "<|im_end|>\n"
+            "Reply ONLY with valid JSON and find possible suggested roles, skills and a seniority level based on the given resume. Extract job_titles (maximum of 3), skills (maximum of 5), suggested_roles "
+            "(exactly 3) and seniority_level (only one example from: \"Junior\", \"Mid\", \"Senior\", or \"Not enough data\") from the résumé below and reply with ONLY JSON.\n\n"
+            "Return a valid JSON with the required keys, JSON: <|im_end|>\n"
         )
         assistant = "<|im_start|>assistant\n"
         return sys + usr + assistant
@@ -278,18 +326,23 @@ def extract_json(llm,tok,prompt,dec):
 
 def load_llm(local_dir):
     tok=AutoTokenizer.from_pretrained(local_dir,trust_remote_code=True)
-    if torch.cuda.is_available():
-        try:
-            mdl=AutoModelForCausalLM.from_pretrained(
-                 local_dir,device_map="auto",
-                 quantization_config=QUANT_CFG,trust_remote_code=True)
-            return tok,mdl
-        except Exception: pass
-    mdl=AutoModelForCausalLM.from_pretrained(
-         local_dir,device_map={"": "cpu"},
-         torch_dtype=torch.float32,low_cpu_mem_usage=True,
-         trust_remote_code=True)
-    return tok,mdl
+    try:
+        mdl = AutoModelForCausalLM.from_pretrained(
+            local_dir,
+            device_map="cuda",
+            quantization_config=QUANT_CFG,
+            trust_remote_code=True,
+        )
+    except Exception:
+        mdl = AutoModelForCausalLM.from_pretrained(
+            local_dir,
+            device_map={"": "cpu"},
+            torch_dtype=torch.float32,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+        )
+    return tok, mdl
+
 
 def extract_json_fixed(llm, tok, prompt, decoding_kwargs):
     import re
@@ -303,14 +356,12 @@ def extract_json_fixed(llm, tok, prompt, decoding_kwargs):
     print("[DEBUG] Raw LLM output:\n", raw)
     print("[DEBUG] Output length:", len(raw))
 
-    # Caută toate blocurile JSON posibile
     json_matches = re.findall(r"\{[\s\S]*?\}", raw)
 
     for candidate in json_matches:
         try:
             parsed = json.loads(candidate)
 
-            # Normalizare chei pentru Mongo
             return {
                 "job_titles": parsed.get("job_titles", parsed.get("jobTitles", [])),
                 "skills": parsed.get("skills", []),
@@ -323,7 +374,6 @@ def extract_json_fixed(llm, tok, prompt, decoding_kwargs):
     return {"error": "Failed to extract JSON"}
 
 
-# Funcție pentru încărcarea cookie-urilor
 def load_linkedin_cookies(driver, cookie_file):
     driver.get("https://www.linkedin.com")
     time.sleep(3)
@@ -342,12 +392,11 @@ def load_linkedin_cookies(driver, cookie_file):
 class FixedJobSearch(OriginalJobSearch):
     def scrape_job_card(self, base_element):
         try:
-            # Job Title - multiple selector options
             title_elem = None
             for selector in [
-                "a.job-card-list__title-link",  # Primary selector
-                "a.job-card-container__link",   # Fallback 1
-                "a.jobs-unified-top-card__job-title-link",  # Fallback 2
+                "a.job-card-list__title-link",
+                "a.job-card-container__link",
+                "a.jobs-unified-top-card__job-title-link",
                 "a.job-card-list__title",
                 "a.job-card-list__title--link",
                 "job-card-list__title--link"
@@ -365,12 +414,11 @@ class FixedJobSearch(OriginalJobSearch):
             job_title = title_elem.get_attribute("aria-label") or title_elem.text.strip()
             linkedin_url = title_elem.get_attribute("href")
 
-            # Company - multiple selector options
             company = ""
             for selector in [
-                ".artdeco-entity-lockup__subtitle span",  # Primary selector
-                ".job-card-container__company-name",      # Fallback 1
-                ".jobs-unified-top-card__company-name a"  # Fallback 2
+                ".artdeco-entity-lockup__subtitle span",
+                ".job-card-container__company-name",   
+                ".jobs-unified-top-card__company-name a" 
             ]:
                 try:
                     company = base_element.find_element(By.CSS_SELECTOR, selector).text.strip()
@@ -378,12 +426,11 @@ class FixedJobSearch(OriginalJobSearch):
                 except:
                     continue
 
-            # Location - multiple selector options
             location = ""
             for selector in [
-                ".job-card-container__metadata-wrapper li:first-child",  # Primary selector
-                ".job-card-container__metadata-item",                   # Fallback 1
-                ".jobs-unified-top-card__primary-description span"      # Fallback 2
+                ".job-card-container__metadata-wrapper li:first-child",
+                ".job-card-container__metadata-item",                   
+                ".jobs-unified-top-card__primary-description span" 
             ]:
                 try:
                     location = base_element.find_element(By.CSS_SELECTOR, selector).text.strip()
@@ -391,12 +438,11 @@ class FixedJobSearch(OriginalJobSearch):
                 except:
                     continue
 
-            # Salary - optional field
             salary = None
             for selector in [
-                ".job-card-container__metadata-wrapper li:nth-child(2)",  # Primary selector
-                ".job-salary",                                           # Fallback 1
-                ".job-card-container__salary-info"                        # Fallback 2
+                ".job-card-container__metadata-wrapper li:nth-child(2)",
+                ".job-salary",                         
+                ".job-card-container__salary-info"        
             ]:
                 try:
                     salary = base_element.find_element(By.CSS_SELECTOR, selector).text.strip()
@@ -404,7 +450,6 @@ class FixedJobSearch(OriginalJobSearch):
                 except:
                     continue
 
-            # Create Job object
             job = Job(
                 linkedin_url=linkedin_url,
                 job_title=job_title,
@@ -431,10 +476,8 @@ class FixedJobSearch(OriginalJobSearch):
             print(f"Failed to load page: {e}")
             return []
 
-        # Wait for page to load completely
         time.sleep(random.uniform(3, 6))
 
-        # Check for login wall
         try:
             if "authwall" in self.driver.current_url:
                 print("Hit a login wall, trying to login again")

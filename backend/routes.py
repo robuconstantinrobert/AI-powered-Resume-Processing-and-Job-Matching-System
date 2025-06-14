@@ -15,24 +15,55 @@ from linkedin_scraper.job_search import JobSearch as OriginalJobSearch
 from linkedin_scraper.jobs import Job
 import hashlib, jwt
 from datetime import datetime, timedelta
+from multiprocessing import Process, Queue
+from worker import process_cv_worker
 
 SECRET_KEY = "cheia_mea_secreta"
 
 api_bp = Blueprint('api', __name__)
 
+
+def _spawn_cv_worker(q, file_bytes, emb, model, gguf, user_id, file_name):
+    """
+    Entrypoint for the subprocess: calls the worker and pushes its
+    output into the queue.
+    """
+    try:
+        result = process_cv_worker(
+            file_bytes, emb, model, gguf, user_id, file_name
+        )
+    except Exception as e:
+        result = {'error': str(e)}
+    q.put(result)
+
 @api_bp.route('/process_cv', methods=['POST'])
 def process_cv():
     file = request.files.get('file')
-    emb = request.form.get('emb', 'minilm')
-    model = request.form.get('model', 'tinyllama')
-    gguf = request.form.get('gguf')
-    user_id = request.form.get('user_id')
-    file_name = request.form.get('file_name', 'document.pdf')
-
     if not file:
         return jsonify({'error': 'No file uploaded'}), 400
 
-    result = process_cv_service(file, emb, model, gguf, user_id, file_name)
+    emb      = request.form.get('emb',   'minilm')
+    model    = request.form.get('model', 'tinyllama')
+    gguf     = request.form.get('gguf',  '')
+    user_id  = request.form.get('user_id')
+    file_name= request.form.get('file_name', 'document.pdf')
+
+    file_bytes = file.read()
+
+    q = Queue()
+    p = Process(
+        target=_spawn_cv_worker,
+        args=(q, file_bytes, emb, model, gguf, user_id, file_name),
+        daemon=False
+    )
+    p.start()
+
+    p.join()
+
+    if q.empty():
+        return jsonify({'error': 'Worker died without returning'}), 500
+    result = q.get()
+
     return jsonify(result)
 
 

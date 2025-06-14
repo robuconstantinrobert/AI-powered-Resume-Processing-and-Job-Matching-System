@@ -175,45 +175,50 @@ const ResumeJobMatching = () => {
         <Row>
           <div className="col">
             <Card className="shadow">
-              <CardHeader className="border-0 d-flex justify-content-between align-items-center">
+              <CardHeader className="border-0 d-flex justify-content-between align-items-center flex-wrap">
                 <h3 className="mb-0">Resume Manager</h3>
-                <div className="mt-3">
-                  <label className="d-flex align-items-center justify-content-center">
-                    <input
-                      type="checkbox"
-                      checked={useEsco}
-                      onChange={() => setUseEsco(!useEsco)}
-                      style={{ marginRight: "8px" }}
-                    />
-                    Enhanced processing
-                  </label>
-                </div>
-                <div className="mt-2">
-                  <label className="text-muted">Embedding:</label>
-                  <select
-                    className="form-control"
-                    value={selectedEmb}
-                    onChange={(e) => setSelectedEmb(e.target.value)}
-                  >
-                    <option value="minilm">MiniLM</option>
-                    <option value="mpnet">MPNet</option>
-                    <option value="gtr">GTR T5</option>
-                  </select>
-                </div>
 
-                <div className="mt-2">
-                  <label className="text-muted">Chat Completion:</label>
-                  <select
-                    className="form-control"
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
+                <div className="d-flex align-items-center">
+                  {/* toggle button for enhanced processing */}
+                  <Button
+                    color={useEsco ? "info" : "secondary"}
+                    size="sm"
+                    className="mr-4 px-3"
+                    onClick={() => setUseEsco(!useEsco)}
                   >
-                    <option value="tinyllama">TinyLlama</option>
-                    <option value="zephyr">Zephyr</option>
-                    <option value="qwen">Qwen</option>
-                  </select>
+                    Enhanced processing
+                  </Button>
+
+                  {/* Embedding selector */}
+                  <div className="d-flex align-items-center mr-4">
+                    <label className="text-muted mb-0 mr-2">Embedding:</label>
+                    <select
+                      className="form-control form-control-alternative form-control-sm"
+                      value={selectedEmb}
+                      onChange={e => setSelectedEmb(e.target.value)}
+                    >
+                      <option value="minilm">MiniLM</option>
+                      <option value="mpnet">MPNet</option>
+                      <option value="gtr">GTR T5</option>
+                    </select>
+                  </div>
+
+                  {/* Model selector */}
+                  <div className="d-flex align-items-center">
+                    <label className="text-muted mb-0 mr-2">Chat Completion:</label>
+                    <select
+                      className="form-control form-control-alternative form-control-sm"
+                      value={selectedModel}
+                      onChange={e => setSelectedModel(e.target.value)}
+                    >
+                      <option value="tinyllama">TinyLlama</option>
+                      <option value="zephyr">Zephyr</option>
+                      <option value="qwen">Qwen</option>
+                    </select>
+                  </div>
                 </div>
               </CardHeader>
+
               <Table className="align-items-center table-flush" responsive>
                 <thead className="thead-light">
                   <tr>

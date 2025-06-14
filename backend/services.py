@@ -5,35 +5,34 @@ from utils import LOCAL_EMB, LOCAL_CHAT, DECODE
 import numpy as np
 from utils import pg_conn, fetch_occupations, fetch_skills, embed_texts, _sha1, CACHE_DIR, prompt_for, extract_json, load_llm, extract_json_fixed
 import psycopg2
-
 from mongo import get_documents_collection
 from bson.objectid import ObjectId
 from datetime import datetime
+import os
+import re
 
+import torch
+import gc
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {DEVICE}")
 
 EMB_MODEL = None
 
 def process_cv_service(file, emb_key, model_key, gguf_path, user_id, file_name):
     global EMB_MODEL
 
-    # Obține calea locală din mapări
     emb_path = LOCAL_EMB.get(emb_key, emb_key)
     model_path = LOCAL_CHAT.get(model_key, model_key)
 
-    # Încarcă modelul de embedding
-    EMB_MODEL = SentenceTransformer(emb_path, device='cpu', trust_remote_code=True)
+    EMB_MODEL = SentenceTransformer(emb_path, device=DEVICE, trust_remote_code=True)
 
-    # Curăță textul din PDF
     resume_text = clean_text(file)
-    cv_vec = embed([resume_text], emb_key)[0]  # doar cache
+    cv_vec = embed([resume_text], emb_key)[0]
 
-    # Încarcă modelul LLM (din Hugging Face sau gguf)
     tok, llm = (load_llm_gguf(gguf_path) if gguf_path else load_llm_hf(model_path))
 
-    # Construiește promptul
     prompt = build_prompt(model_key, resume_text, tok)
 
-    # Rulează completarea și extrage JSON-ul
     result = llm_json_extract(llm, tok, prompt, {
         'max_new_tokens': 512, 'do_sample': True, 'temperature': 0.7
     })
@@ -50,27 +49,21 @@ def process_cv_service(file, emb_key, model_key, gguf_path, user_id, file_name):
 
 
 def process_cv_with_esco_service(file, emb_key, model_key, top_n, user_id, file_name):
-
-    # Încarcă model embedding
     emb_model = SentenceTransformer(LOCAL_EMB[emb_key], device='cpu', trust_remote_code=True)
     model_path = LOCAL_CHAT.get(model_key, model_key)
 
-    # Citește textul din fișier
     resume_text = clean_text(file)
     cv_vec = emb_model.encode(resume_text, normalize_embeddings=True)
 
-    # Conectare la Postgres
     conn = pg_conn()
     cur = conn.cursor()
 
-    # Extrage ocupații și skilluri din DB
     occ_ids, occ_txt = fetch_occupations(cur)
     occ_vecs = embed_texts(emb_model, occ_txt, emb_key + "_occ")
 
     skill_ids, skill_txt, skill_labels = fetch_skills(cur)
     skill_vecs = embed_texts(emb_model, skill_txt, emb_key + "_skill")
 
-    # Similaritate cosine
     occ_sims = occ_vecs @ cv_vec
     top_occ_idx = occ_sims.argsort()[-top_n:][::-1]
     top_occ_txt = [occ_txt[i] for i in top_occ_idx]
@@ -79,10 +72,8 @@ def process_cv_with_esco_service(file, emb_key, model_key, top_n, user_id, file_
     top_skill_idx = skill_sims.argsort()[-top_n:][::-1]
     top_skill_lbl = [skill_labels[i] for i in top_skill_idx]
 
-    # Încarcă model LLM
     tok, llm = load_llm(LOCAL_CHAT[model_key])
 
-    # Construiește prompt + extrage JSON
     prompt = prompt_for(model_key, resume_text, top_occ_txt, top_skill_lbl)
     result = extract_json_fixed(llm,tok,prompt,DECODE[model_key])
 
@@ -102,9 +93,24 @@ def process_cv_with_esco_service(file, emb_key, model_key, top_n, user_id, file_
 def save_processed_document(user_id, raw_text, vector, extracted_data, file_name):
     collection = get_documents_collection()
 
+    base, ext = os.path.splitext(file_name)
+    esc_base = re.escape(base)
+    esc_ext  = re.escape(ext)
+    pattern = f"^{esc_base}(\\(\\d+\\))?{esc_ext}$"
+
+    existing_count = collection.count_documents({
+        "utilizator_id": ObjectId(user_id),
+        "file_name":     {"$regex": pattern}
+    })
+
+    if existing_count:
+        stored_name = f"{base}({existing_count+1}){ext}"
+    else:
+        stored_name = file_name
+
     doc = {
         "utilizator_id": ObjectId(user_id),
-        "file_name": file_name,
+        "file_name": stored_name,
         "continut_text": raw_text,
         "continut_vector": vector.tolist(),
         "data_upload": datetime.utcnow(),
